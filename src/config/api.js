@@ -17,27 +17,30 @@ function isLocalEnvironment() {
 
 function resolveApiBaseUrl() {
     // 1. User manual override stored in localStorage via the UI settings modal
-    const stored = (typeof localStorage !== 'undefined') ? localStorage.getItem('sih_sar_api_url') : null;
-    if (stored && stored.trim()) {
-        return stored.trim().replace(/\/+$/, '');
-    }
+    try {
+        if (typeof localStorage !== 'undefined') {
+            const stored = localStorage.getItem('sih_sar_api_url');
+            if (stored && stored.trim()) {
+                return stored.trim().replace(/\/+$/, '');
+            }
+        }
+    } catch (e) {}
 
     // 2. Vite / Bundler environment variable
     try {
         if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
-            return import.meta.env.VITE_API_URL.replace(/\/+$/, '');
+            const envUrl = import.meta.env.VITE_API_URL.trim().replace(/\/+$/, '');
+            if (envUrl && !envUrl.includes('YOUR-DEPLOYED-BACKEND-URL')) {
+                return envUrl;
+            }
         }
-    } catch (e) {
-        // ignore
-    }
+    } catch (e) {}
 
     // 3. Runtime window injection
     if (typeof window !== 'undefined') {
-        if (window.__ENV__ && window.__ENV__.VITE_API_URL) {
-            return window.__ENV__.VITE_API_URL.replace(/\/+$/, '');
-        }
-        if (window.VITE_API_URL) {
-            return window.VITE_API_URL.replace(/\/+$/, '');
+        const winUrl = window.__ENV__?.VITE_API_URL || window.VITE_API_URL;
+        if (winUrl && winUrl.trim() && !winUrl.includes('YOUR-DEPLOYED-BACKEND-URL')) {
+            return winUrl.trim().replace(/\/+$/, '');
         }
     }
 
@@ -46,8 +49,8 @@ function resolveApiBaseUrl() {
         return 'http://localhost:8000';
     }
 
-    // 5. Production placeholder for cloud deployment
-    return 'https://YOUR-BACKEND-DOMAIN';
+    // 5. In production, return empty if not yet configured
+    return '';
 }
 
 export const API_BASE_URL = resolveApiBaseUrl();

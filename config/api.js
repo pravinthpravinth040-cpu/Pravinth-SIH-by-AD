@@ -2,12 +2,11 @@
  * Sentinel-1 SAR Oil Spill Classification Platform
  * Centralized API Client & Configuration Layer
  * 
- * Complies with GitHub Pages deployment requirements:
- * - Dynamic resolution hierarchy (localStorage -> window.VITE_API_URL -> Production placeholder -> Localhost)
- * - Zero external build dependencies (runs natively in all modern browsers)
- * - Localhost is NEVER used in production on *.github.io unless explicitly saved by user
- * - Probes GET /health dynamically for live connectivity
- * - Handles real AI inference and network timeouts gracefully
+ * Supports:
+ * - VITE_API_URL environment variable injection
+ * - Dynamic runtime configuration via UI modal (stored in localStorage)
+ * - Safe production fallback with clear configuration notice
+ * - Localhost used exclusively for local development
  */
 
 (function (global) {
@@ -39,19 +38,17 @@
         try {
             if (typeof localStorage !== 'undefined') {
                 var stored = localStorage.getItem('sih_sar_api_url');
-                if (stored && stored.trim()) {
+                if (stored && stored.trim() && !stored.includes('YOUR-DEPLOYED-BACKEND-URL')) {
                     return sanitizeUrl(stored);
                 }
             }
         } catch (e) {}
 
-        // 2. Runtime window injection from environment
+        // 2. Runtime window injection from environment (e.g. VITE_API_URL or build script)
         if (typeof window !== 'undefined') {
-            if (window.__ENV__ && window.__ENV__.VITE_API_URL) {
-                return sanitizeUrl(window.__ENV__.VITE_API_URL);
-            }
-            if (window.VITE_API_URL) {
-                return sanitizeUrl(window.VITE_API_URL);
+            var envUrl = (window.__ENV__ && window.__ENV__.VITE_API_URL) || window.VITE_API_URL;
+            if (envUrl && envUrl.trim() && !envUrl.includes('YOUR-DEPLOYED-BACKEND-URL')) {
+                return sanitizeUrl(envUrl);
             }
         }
 
@@ -60,8 +57,8 @@
             return 'http://localhost:8000';
         }
 
-        // 4. If deployed on GitHub Pages or other public web host, use production placeholder
-        return 'https://YOUR-BACKEND-DOMAIN';
+        // 4. In production (GitHub Pages), empty means unconfigured
+        return '';
     }
 
     var currentBaseUrl = resolveApiBaseUrl();
@@ -88,23 +85,31 @@
         },
 
         /**
-         * Checks if the active URL is still pointing to unconfigured placeholder
+         * Checks if a valid backend URL is configured
          */
-        isPlaceholderUrl: function () {
-            return !currentBaseUrl || currentBaseUrl.indexOf('YOUR-BACKEND-DOMAIN') !== -1 || currentBaseUrl.indexOf('example.com') !== -1;
+        isConfigured: function () {
+            return Boolean(
+                currentBaseUrl &&
+                currentBaseUrl.trim() &&
+                currentBaseUrl.indexOf('YOUR-DEPLOYED-BACKEND-URL') === -1 &&
+                currentBaseUrl.indexOf('YOUR-BACKEND-DOMAIN') === -1
+            );
         },
 
         /**
          * Health Check: GET /health
-         * Returns { online: boolean, latencyMs: number, data: object, error: string }
+         * Returns { online: boolean, configured: boolean, latencyMs: number, data: object, error: string }
          */
         checkHealth: async function (timeoutMs) {
             timeoutMs = timeoutMs || 5000;
-            if (this.isPlaceholderUrl()) {
+
+            if (!this.isConfigured()) {
                 return {
                     online: false,
+                    configured: false,
                     latencyMs: 0,
-                    error: 'Cloud backend not configured. Please set your live backend URL in API Settings.'
+                    data: null,
+                    error: 'Backend URL is not configured. Please set your live backend URL in API Settings.'
                 };
             }
 
@@ -129,6 +134,7 @@
                 var data = await response.json().catch(function () { return { status: 'healthy' }; });
                 return {
                     online: true,
+                    configured: true,
                     latencyMs: latencyMs,
                     data: data,
                     error: null
@@ -143,6 +149,7 @@
                 }
                 return {
                     online: false,
+                    configured: true,
                     latencyMs: 0,
                     data: null,
                     error: msg
@@ -156,12 +163,13 @@
          */
         predictImage: async function (fileBlob, filename, timeoutMs) {
             timeoutMs = timeoutMs || 30000;
-            if (this.isPlaceholderUrl()) {
-                throw new Error('Backend URL is not configured. Please click "API Settings" and enter your deployed backend URL.');
+
+            if (!this.isConfigured()) {
+                throw new Error('Backend URL is not configured. Please click "API Settings" in the header and enter your deployed backend URL.');
             }
 
             var formData = new FormData();
-            formData.append('file', fileBlob, filename);
+            formData.append('file', fileBlob, filename || 'sar_patch.jpg');
 
             var controller = new AbortController();
             var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
@@ -202,6 +210,7 @@
          * Fetch Sample Demo Images from Backend
          */
         fetchSamples: async function () {
+            if (!this.isConfigured()) return { status: 'unconfigured', samples: [] };
             try {
                 var res = await fetch(currentBaseUrl + '/samples', { mode: 'cors' });
                 if (res.ok) return await res.json();
@@ -213,6 +222,7 @@
          * Fetch Sample Image Bytes
          */
         fetchSampleImageBlob: async function (filename) {
+            if (!this.isConfigured()) throw new Error('Backend unconfigured');
             var res = await fetch(currentBaseUrl + '/samples/' + filename, { mode: 'cors' });
             if (!res.ok) throw new Error('Could not fetch sample ' + filename);
             return await res.blob();
