@@ -27,6 +27,23 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 SECRET_KEY = os.getenv("SECRET_KEY", "sih-sar-oil-spill-secret-2026")
 API_KEY = os.getenv("API_KEY", "")
 
+# Allowed CORS Origins (GitHub Pages + Local development)
+CORS_ORIGINS_RAW = os.getenv("CORS_ORIGINS", "")
+DEFAULT_CORS_ORIGINS = [
+    "https://pravinthpravinth040-cpu.github.io",
+    "http://localhost:8000",
+    "http://localhost:8080",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:5500",
+]
+if CORS_ORIGINS_RAW:
+    ALLOWED_ORIGINS = [origin.strip() for origin in CORS_ORIGINS_RAW.split(",") if origin.strip()]
+else:
+    ALLOWED_ORIGINS = DEFAULT_CORS_ORIGINS + ["*"]
+
 # Database Configuration (MySQL / phpMyAdmin default)
 DB_ENGINE = os.getenv("DB_ENGINE", "mysql")
 DB_HOST = os.getenv("DB_HOST", "localhost")

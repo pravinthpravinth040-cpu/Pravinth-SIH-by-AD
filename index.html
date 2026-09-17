@@ -1481,16 +1481,19 @@
             </div>
             <div>
                 <label class="input-label" for="api-url-input">API Base URL (FastAPI Endpoint)</label>
-                <input type="text" id="api-url-input" class="input-field" value="http://localhost:8000"
-                    placeholder="http://localhost:8000" />
-                <p style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.5rem;">
-                    Make sure <code>app.py</code> is running using:
-                    <code>python -m uvicorn app:app --reload --port 8000</code>
-                </p>
+                <input type="text" id="api-url-input" class="input-field" value=""
+                    placeholder="https://YOUR-BACKEND-DOMAIN or http://localhost:8000" />
+                <div style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.6rem; line-height: 1.6;">
+                    <div><strong>Active Endpoint:</strong> <code id="api-configured-url" style="color: var(--cyan-neon);">--</code></div>
+                    <div style="margin-top: 0.35rem;">
+                        &bull; <strong>Local Dev:</strong> <code>http://localhost:8000</code><br/>
+                        &bull; <strong>GitHub Pages / Cloud:</strong> Enter your deployed HTTPS backend URL (e.g. Render, Railway, Hugging Face).
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button class="btn-secondary" onclick="toggleConfigModal(false)">Cancel</button>
-                <button class="analyze-btn" onclick="saveApiConfig()">Save & Test</button>
+                <button class="analyze-btn" onclick="saveApiConfig()">Save & Test Connection</button>
             </div>
         </div>
     </div>
@@ -1501,9 +1504,11 @@
         <span id="toast-message">Notification message</span>
     </div>
 
+    <!-- Centralized API Configuration -->
+    <script src="config/api.js"></script>
+
     <script>
         // State Variables
-        let apiBaseUrl = localStorage.getItem('sih_sar_api_url') || 'http://localhost:8000';
         let currentImageBlob = null;
         let currentFileName = "";
         let currentImageDims = { w: 0, h: 0 };
@@ -1554,7 +1559,9 @@
 
         // Init
         window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('api-url-input').value = apiBaseUrl;
+            const currentUrl = SentinelAPI.getBaseUrl();
+            document.getElementById('api-url-input').value = currentUrl;
+            document.getElementById('api-configured-url').textContent = currentUrl;
             checkApiHealth();
             renderSyntheticThumbnails();
             renderHistory();
@@ -1566,23 +1573,19 @@
         async function checkApiHealth() {
             const dot = document.getElementById('api-status-dot');
             const text = document.getElementById('api-status-text');
+            const pill = document.getElementById('api-status-pill');
 
-            try {
-                const start = performance.now();
-                const res = await fetch(`${apiBaseUrl}/`, { method: 'GET', mode: 'cors' });
-                const latency = Math.round(performance.now() - start);
-
-                if (res.ok) {
-                    isApiOnline = true;
-                    dot.className = 'status-dot online';
-                    text.textContent = `API Connected (${latency}ms)`;
-                } else {
-                    throw new Error('API returned status ' + res.status);
-                }
-            } catch (err) {
+            const health = await SentinelAPI.checkHealth(5000);
+            if (health.online) {
+                isApiOnline = true;
+                dot.className = 'status-dot online';
+                text.textContent = `🟢 API Online (${health.latencyMs}ms)`;
+                pill.title = `Backend Online: ${SentinelAPI.getBaseUrl()} (${health.latencyMs}ms)`;
+            } else {
                 isApiOnline = false;
                 dot.className = 'status-dot offline';
-                text.textContent = 'API Offline (Localhost:8000)';
+                text.textContent = '🔴 API Offline';
+                pill.title = `Backend Offline: ${SentinelAPI.getBaseUrl()} - Click to configure`;
             }
         }
 
@@ -1592,17 +1595,23 @@
         document.getElementById('api-status-pill').onclick = () => toggleConfigModal(true);
 
         function toggleConfigModal(show) {
-            if (show) configModal.classList.add('open');
-            else configModal.classList.remove('open');
+            if (show) {
+                const currentUrl = SentinelAPI.getBaseUrl();
+                document.getElementById('api-url-input').value = currentUrl;
+                document.getElementById('api-configured-url').textContent = currentUrl;
+                configModal.classList.add('open');
+            } else {
+                configModal.classList.remove('open');
+            }
         }
 
         function saveApiConfig() {
             const val = document.getElementById('api-url-input').value.trim();
             if (val) {
-                apiBaseUrl = val.replace(/\/$/, "");
-                localStorage.setItem('sih_sar_api_url', apiBaseUrl);
+                const clean = SentinelAPI.setBaseUrl(val);
+                document.getElementById('api-configured-url').textContent = clean;
                 toggleConfigModal(false);
-                showToast('API Endpoint updated to ' + apiBaseUrl, '✅');
+                showToast('API Endpoint updated to ' + clean, '✅');
                 checkApiHealth();
             }
         }
@@ -1752,10 +1761,16 @@
             processingTime.textContent = '--';
         }
 
-        // Run Inference
+        // Run Inference (Real AI Inference Only - No Fake Simulation)
         btnRunInference.addEventListener('click', async () => {
             if (!currentImageBlob) {
                 showToast('Please select or upload an image first.', '⚠️');
+                return;
+            }
+
+            if (SentinelAPI.isPlaceholderUrl()) {
+                showToast('Backend URL not configured. Set your live API URL in API Settings.', '⚙️');
+                displayBackendUnavailable('Cloud backend URL is not configured. Click "API Settings" in the header and enter your deployed backend endpoint (e.g. on Render, Railway, or Hugging Face).');
                 return;
             }
 
@@ -1763,62 +1778,76 @@
             viewerBox.classList.add('scanning');
             badgeIcon.textContent = '⚡';
             badgeText.textContent = 'Scanning SAR Radar...';
-            verdictTitle.textContent = 'Inference in Progress...';
+            verdictTitle.textContent = 'Real AI Inference in Progress...';
+            verdictTitle.style.color = 'var(--cyan-neon)';
+            verdictDesc.textContent = `Transmitting SAR satellite patch to ${SentinelAPI.getBaseUrl()} for ResNet-18 classification...`;
 
             const startTime = performance.now();
-            const formData = new FormData();
-            formData.append('file', currentImageBlob, currentFileName);
 
             try {
-                let result;
-                if (isApiOnline) {
-                    const response = await fetch(`${apiBaseUrl}/predict`, {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) {
-                        const errData = await response.json().catch(() => ({}));
-                        throw new Error(errData.detail || `Server error: ${response.status}`);
-                    }
-                    result = await response.json();
-                } else {
-                    // If backend offline, simulate intelligent response so the user can test the UI immediately!
-                    await new Promise(r => setTimeout(r, 650));
-                    const isOil = currentFileName.toLowerCase().includes('oil');
-                    const fakeRaw = isOil ? 0.94 + Math.random() * 0.05 : 0.03 + Math.random() * 0.12;
-                    result = {
-                        filename: currentFileName,
-                        oil_detected: fakeRaw >= 0.5,
-                        confidence: fakeRaw >= 0.5 ? fakeRaw : (1.0 - fakeRaw),
-                        raw_score: fakeRaw,
-                        simulated: true
-                    };
-                    showToast('Backend offline: Generated simulated inference result for demonstration.', '💡');
-                }
-
+                const result = await SentinelAPI.predictImage(currentImageBlob, currentFileName, 30000);
                 const duration = Math.round(performance.now() - startTime);
                 displayInferenceResult(result, duration);
-
             } catch (error) {
                 console.error('Inference Error:', error);
-                showToast(error.message, '❌');
-                badgeText.textContent = 'Inference Failed';
-                verdictTitle.textContent = 'Classification Error';
-                verdictDesc.textContent = error.message;
+                const isOffline = !isApiOnline || error.message.includes('unavailable') || error.message.includes('timed out') || error.message.includes('CORS');
+                displayBackendUnavailable(error.message, isOffline);
             } finally {
                 btnRunInference.disabled = false;
                 viewerBox.classList.remove('scanning');
             }
         });
 
-        // Display Result
-        function displayInferenceResult(result, durationMs) {
-            const isOil = result.oil_detected;
-            const confPct = (result.confidence * 100).toFixed(1);
-            const rawFormatted = result.raw_score.toFixed(4);
+        // Display Backend Unavailable / Error State
+        function displayBackendUnavailable(errorMessage, isOffline = true) {
+            resultCard.className = 'result-card glass-panel state-idle';
+            resultBadge.className = 'badge-classified idle';
+            badgeIcon.textContent = '🔴';
+            badgeText.textContent = isOffline ? 'BACKEND UNAVAILABLE' : 'INFERENCE ERROR';
 
-            processingTime.textContent = `${durationMs} ms latency`;
+            verdictTitle.textContent = isOffline ? 'Backend Service Unavailable' : 'Classification Failed';
+            verdictTitle.style.color = 'var(--danger-red)';
+            verdictDesc.innerHTML = `
+                <strong>${escapeHtml(errorMessage)}</strong><br/><br/>
+                <span style="font-size: 0.78rem; color: var(--text-subtle); line-height: 1.6;">
+                    Target API: <code>${escapeHtml(SentinelAPI.getBaseUrl())}</code><br/>
+                    &bull; <strong>Local Development:</strong> Launch backend using <code>run_backend.bat</code> or <code>python app.py</code>.<br/>
+                    &bull; <strong>GitHub Pages Deployment:</strong> Ensure your cloud backend is online and allows requests from <code>${window.location.origin}</code>.<br/>
+                    &bull; Update the endpoint anytime by clicking <strong>API Settings</strong> in the header.
+                </span>
+            `;
+
+            valConfidence.textContent = '--';
+            labelConfVal.textContent = '--';
+            barConfidence.style.width = '0%';
+
+            valRawScore.textContent = '--';
+            labelRawVal.textContent = '--';
+            barRaw.style.width = '0%';
+
+            metaDecision.textContent = 'UNAVAILABLE';
+            metaDecision.style.color = 'var(--danger-red)';
+            protocolBox.style.display = 'none';
+            processingTime.textContent = 'Failed';
+
+            showToast(isOffline ? 'Backend unavailable. No fake prediction generated.' : errorMessage, '❌');
+        }
+
+        // Display Real AI Inference Result
+        function displayInferenceResult(result, durationMs) {
+            const isOil = result.oil_detected === true || result.prediction === 'oil_spill';
+            const confidenceVal = typeof result.confidence === 'number' ? result.confidence : 0;
+            const confPct = (confidenceVal * 100).toFixed(1);
+
+            const rawScoreVal = typeof result.raw_probability === 'number'
+                ? result.raw_probability
+                : (typeof result.raw_score === 'number' ? result.raw_score : 0);
+            const rawFormatted = Number(rawScoreVal).toFixed(4);
+
+            const modelArch = result.model || 'ResNet-18';
+            const latencyText = result.processing_time_ms ? `${result.processing_time_ms} ms (AI)` : `${durationMs} ms latency`;
+
+            processingTime.textContent = latencyText;
 
             if (isOil) {
                 resultCard.className = 'result-card glass-panel state-oil';
@@ -1828,7 +1857,7 @@
 
                 verdictTitle.textContent = 'High-Probability Oil Spill Signature';
                 verdictTitle.style.color = '#f87171';
-                verdictDesc.textContent = `SAR radar backscatter damping pattern identified. Confidence is ${confPct}% (raw sigmoid score: ${rawFormatted}).`;
+                verdictDesc.textContent = `SAR radar backscatter damping pattern identified by ${modelArch}. Model confidence is ${confPct}% (raw sigmoid score: ${rawFormatted}).`;
 
                 barConfidence.className = 'progress-bar-fill fill-oil';
                 barRaw.className = 'progress-bar-fill fill-oil';
@@ -1852,7 +1881,7 @@
 
                 verdictTitle.textContent = 'No Oil Spill Signatures Detected';
                 verdictTitle.style.color = '#34d399';
-                verdictDesc.textContent = `SAR roughness and radar cross-section are consistent with natural open ocean water. (Confidence: ${confPct}%).`;
+                verdictDesc.textContent = `SAR roughness and radar cross-section are consistent with natural open ocean water as evaluated by ${modelArch}. (Confidence: ${confPct}%).`;
 
                 barConfidence.className = 'progress-bar-fill fill-clean';
                 barRaw.className = 'progress-bar-fill fill-clean';
@@ -1875,14 +1904,15 @@
 
             valRawScore.textContent = rawFormatted;
             labelRawVal.textContent = rawFormatted;
-            barRaw.style.width = `${(result.raw_score * 100).toFixed(1)}%`;
+            barRaw.style.width = `${Math.min(100, Math.max(0, Number(rawScoreVal) * 100)).toFixed(1)}%`;
 
-            // Save to audit history
+            // Save to audit history (Real Predictions Only)
             addToHistory({
                 filename: result.filename || currentFileName,
                 oil_detected: isOil,
-                confidence: result.confidence,
-                raw_score: result.raw_score,
+                confidence: confidenceVal,
+                raw_score: rawScoreVal,
+                model: modelArch,
                 timestamp: new Date().toLocaleTimeString(),
                 thumbSrc: previewImage.src
             });
@@ -1931,7 +1961,7 @@
             metricTotalScans.textContent = total;
             metricOilDetected.textContent = oilCount;
             metricCleanWaters.textContent = cleanCount;
-            metricAvgLatency.textContent = isApiOnline ? '~35 ms' : 'Simulated';
+            metricAvgLatency.textContent = isApiOnline ? '~35 ms' : '--';
         }
 
         function clearHistory() {
@@ -2005,15 +2035,12 @@
             else if (type === 'clean_1') sampleFilename = "clean_sample_1.jpg";
             else sampleFilename = "sample_no_oil_2.jpg";
 
-            if (isApiOnline) {
+            if (isApiOnline && !SentinelAPI.isPlaceholderUrl()) {
                 try {
-                    const res = await fetch(`${apiBaseUrl}/samples/${sampleFilename}`);
-                    if (res.ok) {
-                        const blob = await res.blob();
-                        handleSelectedFile(blob, sampleFilename);
-                        showToast(`Loaded satellite SAR sample: ${sampleFilename}`, '🛰️');
-                        return;
-                    }
+                    const blob = await SentinelAPI.fetchSampleImageBlob(sampleFilename);
+                    handleSelectedFile(blob, sampleFilename);
+                    showToast(`Loaded satellite SAR sample: ${sampleFilename}`, '🛰️');
+                    return;
                 } catch (e) {
                     console.warn("Could not fetch server sample image, using canvas tile", e);
                 }

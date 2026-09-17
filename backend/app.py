@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -19,7 +20,8 @@ from backend.config import (
     HOST,
     PORT,
     PROJECT_ROOT,
-    CANDIDATE_SAMPLE_DIRS
+    CANDIDATE_SAMPLE_DIRS,
+    ALLOWED_ORIGINS
 )
 from backend.inference import predict, load_inference_model, get_model_info
 from backend.database import (
@@ -49,10 +51,10 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for frontend integration (file://, localhost, live server, etc.)
+# Enable CORS for frontend integration (GitHub Pages, localhost, live server)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -95,6 +97,8 @@ async def predict_endpoint(file: UploadFile = File(...)):
     Accepts a SAR satellite image tile and returns whether an oil spill was detected.
     Automatically logs telemetry into the MySQL database (prediction_records).
     """
+    start_time = time.perf_counter()
+
     # 1. Validate File Format
     allowed_exts = ('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')
     if file.filename and not any(file.filename.lower().endswith(ext) for ext in allowed_exts):
@@ -112,6 +116,8 @@ async def predict_endpoint(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
 
+    processing_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
     # 4. Database Audit Persistence
     record_id = save_prediction(
         filename=file.filename or "uploaded_image.jpg",
@@ -123,11 +129,16 @@ async def predict_endpoint(file: UploadFile = File(...)):
     )
 
     # 5. Build standardized response matching API contract
+    prediction_label = "oil_spill" if result["oil_detected"] else "clean_ocean"
     return JSONResponse(content={
-        "filename": file.filename or "unknown",
+        "prediction": prediction_label,
         "oil_detected": result["oil_detected"],
         "confidence": round(result["confidence"], 4),
         "raw_score": round(result["raw_score"], 4),
+        "raw_probability": round(result["raw_score"], 4),
+        "model": "ResNet-18",
+        "filename": file.filename or "unknown",
+        "processing_time_ms": processing_time_ms,
         "record_id": record_id,
         "status": "processed"
     })
