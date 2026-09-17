@@ -1999,7 +1999,26 @@
             }
         }
 
-        function loadSamplePreset(type) {
+        async function loadSamplePreset(type) {
+            let sampleFilename = "";
+            if (type === 'oil_1') sampleFilename = "oil_sample_1.jpg";
+            else if (type === 'clean_1') sampleFilename = "clean_sample_1.jpg";
+            else sampleFilename = "sample_no_oil_2.jpg";
+
+            if (isApiOnline) {
+                try {
+                    const res = await fetch(`${apiBaseUrl}/samples/${sampleFilename}`);
+                    if (res.ok) {
+                        const blob = await res.blob();
+                        handleSelectedFile(blob, sampleFilename);
+                        showToast(`Loaded satellite SAR sample: ${sampleFilename}`, '🛰️');
+                        return;
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch server sample image, using canvas tile", e);
+                }
+            }
+
             const tempCanvas = document.createElement('canvas');
             tempCanvas.width = 256;
             tempCanvas.height = 256;
