@@ -3,7 +3,8 @@
  * Centralized API Client & Configuration Layer
  * 
  * Complies with GitHub Pages deployment requirements:
- * - Dynamic resolution hierarchy (localStorage -> VITE_API_URL -> Production placeholder -> Localhost)
+ * - Dynamic resolution hierarchy (localStorage -> window.VITE_API_URL -> Production placeholder -> Localhost)
+ * - Zero external build dependencies (runs natively in all modern browsers)
  * - Localhost is NEVER used in production on *.github.io unless explicitly saved by user
  * - Probes GET /health dynamically for live connectivity
  * - Handles real AI inference and network timeouts gracefully
@@ -12,11 +13,10 @@
 (function (global) {
     'use strict';
 
-    // Check if running on local development machine
     function isLocalEnvironment() {
         if (typeof window === 'undefined' || !window.location) return false;
-        const host = window.location.hostname;
-        const proto = window.location.protocol;
+        var host = window.location.hostname;
+        var proto = window.location.protocol;
         return (
             host === 'localhost' ||
             host === '127.0.0.1' ||
@@ -25,24 +25,27 @@
         );
     }
 
-    // Resolve the appropriate API Base URL
+    function sanitizeUrl(url) {
+        if (!url) return '';
+        var clean = url.trim().replace(/\/+$/, '');
+        if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+            clean = 'https://' + clean;
+        }
+        return clean;
+    }
+
     function resolveApiBaseUrl() {
         // 1. User manual override stored in localStorage via the UI settings modal
-        const stored = (typeof localStorage !== 'undefined') ? localStorage.getItem('sih_sar_api_url') : null;
-        if (stored && stored.trim()) {
-            return sanitizeUrl(stored.trim());
-        }
-
-        // 2. Vite / Bundler environment variable if built
         try {
-            if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_URL) {
-                return sanitizeUrl(import.meta.env.VITE_API_URL);
+            if (typeof localStorage !== 'undefined') {
+                var stored = localStorage.getItem('sih_sar_api_url');
+                if (stored && stored.trim()) {
+                    return sanitizeUrl(stored);
+                }
             }
-        } catch (e) {
-            // import.meta may not be supported in non-module scripts
-        }
+        } catch (e) {}
 
-        // 3. Runtime window injection
+        // 2. Runtime window injection from environment
         if (typeof window !== 'undefined') {
             if (window.__ENV__ && window.__ENV__.VITE_API_URL) {
                 return sanitizeUrl(window.__ENV__.VITE_API_URL);
@@ -52,28 +55,18 @@
             }
         }
 
-        // 4. If running locally, default to local backend
+        // 3. If running locally, default to local backend
         if (isLocalEnvironment()) {
             return 'http://localhost:8000';
         }
 
-        // 5. If deployed on GitHub Pages or other public web host, use production placeholder
-        // Users must configure their live cloud backend in the Settings modal or .env.production
+        // 4. If deployed on GitHub Pages or other public web host, use production placeholder
         return 'https://YOUR-BACKEND-DOMAIN';
     }
 
-    function sanitizeUrl(url) {
-        if (!url) return '';
-        let clean = url.replace(/\/+$/, '');
-        if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
-            clean = 'https://' + clean;
-        }
-        return clean;
-    }
+    var currentBaseUrl = resolveApiBaseUrl();
 
-    let currentBaseUrl = resolveApiBaseUrl();
-
-    const SentinelAPI = {
+    var SentinelAPI = {
         /**
          * Returns currently active API Base URL
          */
@@ -86,9 +79,11 @@
          */
         setBaseUrl: function (newUrl) {
             currentBaseUrl = sanitizeUrl(newUrl);
-            if (typeof localStorage !== 'undefined') {
-                localStorage.setItem('sih_sar_api_url', currentBaseUrl);
-            }
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('sih_sar_api_url', currentBaseUrl);
+                }
+            } catch (e) {}
             return currentBaseUrl;
         },
 
@@ -96,14 +91,15 @@
          * Checks if the active URL is still pointing to unconfigured placeholder
          */
         isPlaceholderUrl: function () {
-            return currentBaseUrl.includes('YOUR-BACKEND-DOMAIN') || currentBaseUrl.includes('example.com');
+            return !currentBaseUrl || currentBaseUrl.indexOf('YOUR-BACKEND-DOMAIN') !== -1 || currentBaseUrl.indexOf('example.com') !== -1;
         },
 
         /**
          * Health Check: GET /health
          * Returns { online: boolean, latencyMs: number, data: object, error: string }
          */
-        checkHealth: async function (timeoutMs = 6000) {
+        checkHealth: async function (timeoutMs) {
+            timeoutMs = timeoutMs || 5000;
             if (this.isPlaceholderUrl()) {
                 return {
                     online: false,
@@ -112,25 +108,25 @@
                 };
             }
 
-            const startTime = performance.now();
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            var startTime = performance.now();
+            var controller = new AbortController();
+            var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
 
             try {
-                const response = await fetch(`${currentBaseUrl}/health`, {
+                var response = await fetch(currentBaseUrl + '/health', {
                     method: 'GET',
                     mode: 'cors',
                     signal: controller.signal
                 });
                 clearTimeout(timer);
 
-                const latencyMs = Math.round(performance.now() - startTime);
+                var latencyMs = Math.round(performance.now() - startTime);
 
                 if (!response.ok) {
-                    throw new Error(`Server returned HTTP ${response.status}`);
+                    throw new Error('Server returned HTTP ' + response.status);
                 }
 
-                const data = await response.json().catch(() => ({ status: 'healthy' }));
+                var data = await response.json().catch(function () { return { status: 'healthy' }; });
                 return {
                     online: true,
                     latencyMs: latencyMs,
@@ -139,11 +135,11 @@
                 };
             } catch (err) {
                 clearTimeout(timer);
-                let msg = err.message;
+                var msg = err.message || 'Connection failed';
                 if (err.name === 'AbortError') {
-                    msg = `Connection timed out after ${timeoutMs}ms`;
-                } else if (err.message && err.message.includes('Failed to fetch')) {
-                    msg = 'Network error or CORS blocked. Ensure backend is running and allows this origin.';
+                    msg = 'Connection timed out after ' + timeoutMs + 'ms';
+                } else if (msg.indexOf('Failed to fetch') !== -1) {
+                    msg = 'Backend offline or CORS blocked at ' + currentBaseUrl;
                 }
                 return {
                     online: false,
@@ -158,19 +154,20 @@
          * Submit Image for Real SAR Inference: POST /predict
          * Returns parsed prediction object or throws an Error.
          */
-        predictImage: async function (fileBlob, filename, timeoutMs = 30000) {
+        predictImage: async function (fileBlob, filename, timeoutMs) {
+            timeoutMs = timeoutMs || 30000;
             if (this.isPlaceholderUrl()) {
                 throw new Error('Backend URL is not configured. Please click "API Settings" and enter your deployed backend URL.');
             }
 
-            const formData = new FormData();
+            var formData = new FormData();
             formData.append('file', fileBlob, filename);
 
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            var controller = new AbortController();
+            var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
 
             try {
-                const response = await fetch(`${currentBaseUrl}/predict`, {
+                var response = await fetch(currentBaseUrl + '/predict', {
                     method: 'POST',
                     mode: 'cors',
                     body: formData,
@@ -179,25 +176,23 @@
                 clearTimeout(timer);
 
                 if (!response.ok) {
-                    let errDetail = `Server returned HTTP ${response.status}`;
+                    var errDetail = 'Server returned HTTP ' + response.status;
                     try {
-                        const errJson = await response.json();
+                        var errJson = await response.json();
                         if (errJson.detail) errDetail = errJson.detail;
-                    } catch (e) {
-                        // ignore json parse error
-                    }
+                    } catch (e) {}
                     throw new Error(errDetail);
                 }
 
-                const json = await response.json();
+                var json = await response.json();
                 return json;
             } catch (err) {
                 clearTimeout(timer);
                 if (err.name === 'AbortError') {
-                    throw new Error(`Inference timed out after ${timeoutMs / 1000}s. Server took too long to process SAR patch.`);
+                    throw new Error('Inference timed out after ' + (timeoutMs / 1000) + 's.');
                 }
-                if (err.message && err.message.includes('Failed to fetch')) {
-                    throw new Error(`Backend unavailable at ${currentBaseUrl}. Check network connectivity and CORS settings.`);
+                if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+                    throw new Error('Backend unavailable at ' + currentBaseUrl + '. Check server connectivity and CORS.');
                 }
                 throw err;
             }
@@ -208,11 +203,9 @@
          */
         fetchSamples: async function () {
             try {
-                const res = await fetch(`${currentBaseUrl}/samples`, { mode: 'cors' });
+                var res = await fetch(currentBaseUrl + '/samples', { mode: 'cors' });
                 if (res.ok) return await res.json();
-            } catch (e) {
-                // Return empty if offline
-            }
+            } catch (e) {}
             return { status: 'offline', samples: [] };
         },
 
@@ -220,32 +213,13 @@
          * Fetch Sample Image Bytes
          */
         fetchSampleImageBlob: async function (filename) {
-            const res = await fetch(`${currentBaseUrl}/samples/${filename}`, { mode: 'cors' });
-            if (!res.ok) throw new Error(`Could not fetch sample ${filename}`);
+            var res = await fetch(currentBaseUrl + '/samples/' + filename, { mode: 'cors' });
+            if (!res.ok) throw new Error('Could not fetch sample ' + filename);
             return await res.blob();
-        },
-
-        /**
-         * Fetch Audit History from Backend Database
-         */
-        fetchHistory: async function (limit = 50) {
-            try {
-                const res = await fetch(`${currentBaseUrl}/history?limit=${limit}`, { mode: 'cors' });
-                if (res.ok) return await res.json();
-            } catch (e) {
-                // ignore
-            }
-            return { status: 'offline', records: [] };
         }
     };
 
-    // Attach to global window
+    // Attach to global scope
     global.SentinelAPI = SentinelAPI;
     global.API_BASE_URL = currentBaseUrl;
-
-    // Support ES module exports if environment supports it
-    if (typeof exports !== 'undefined') {
-        exports.SentinelAPI = SentinelAPI;
-        exports.API_BASE_URL = currentBaseUrl;
-    }
-})(typeof window !== 'undefined' ? window : globalThis);
+})(typeof window !== 'undefined' ? window : this);

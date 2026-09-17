@@ -1508,6 +1508,82 @@
     <script src="config/api.js"></script>
 
     <script>
+        // Inline guard: Ensure SentinelAPI is always defined even if external script is blocked
+        if (typeof window.SentinelAPI === 'undefined') {
+            (function (global) {
+                function isLocal() {
+                    const h = window.location.hostname;
+                    return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || window.location.protocol === 'file:';
+                }
+                function sanitize(u) {
+                    if (!u) return '';
+                    let c = u.trim().replace(/\/+$/, '');
+                    if (!c.startsWith('http://') && !c.startsWith('https://')) c = 'https://' + c;
+                    return c;
+                }
+                function resolve() {
+                    try {
+                        const s = localStorage.getItem('sih_sar_api_url');
+                        if (s && s.trim()) return sanitize(s);
+                    } catch (e) {}
+                    if (window.__ENV__?.VITE_API_URL) return sanitize(window.__ENV__.VITE_API_URL);
+                    if (window.VITE_API_URL) return sanitize(window.VITE_API_URL);
+                    if (isLocal()) return 'http://localhost:8000';
+                    return 'https://YOUR-BACKEND-DOMAIN';
+                }
+                let base = resolve();
+                global.SentinelAPI = {
+                    getBaseUrl: () => base,
+                    setBaseUrl: (u) => {
+                        base = sanitize(u);
+                        try { localStorage.setItem('sih_sar_api_url', base); } catch (e) {}
+                        return base;
+                    },
+                    isPlaceholderUrl: () => !base || base.includes('YOUR-BACKEND-DOMAIN'),
+                    checkHealth: async (ms = 5000) => {
+                        if (base.includes('YOUR-BACKEND-DOMAIN')) return { online: false, latencyMs: 0, error: 'Unconfigured placeholder' };
+                        const st = performance.now();
+                        const ctrl = new AbortController();
+                        const tm = setTimeout(() => ctrl.abort(), ms);
+                        try {
+                            const res = await fetch(base + '/health', { method: 'GET', mode: 'cors', signal: ctrl.signal });
+                            clearTimeout(tm);
+                            if (!res.ok) throw new Error('HTTP ' + res.status);
+                            const d = await res.json().catch(() => ({}));
+                            return { online: true, latencyMs: Math.round(performance.now() - st), data: d };
+                        } catch (e) {
+                            clearTimeout(tm);
+                            return { online: false, latencyMs: 0, error: e.message };
+                        }
+                    },
+                    predictImage: async (blob, name, ms = 30000) => {
+                        if (base.includes('YOUR-BACKEND-DOMAIN')) throw new Error('Backend URL is not configured. Please set in API Settings.');
+                        const fd = new FormData();
+                        fd.append('file', blob, name || 'sar_patch.jpg');
+                        const ctrl = new AbortController();
+                        const tm = setTimeout(() => ctrl.abort(), ms);
+                        try {
+                            const res = await fetch(base + '/predict', { method: 'POST', mode: 'cors', body: fd, signal: ctrl.signal });
+                            clearTimeout(tm);
+                            if (!res.ok) {
+                                const err = await res.json().catch(() => ({}));
+                                throw new Error(err.detail || 'Server returned HTTP ' + res.status);
+                            }
+                            return await res.json();
+                        } catch (e) {
+                            clearTimeout(tm);
+                            throw e;
+                        }
+                    },
+                    fetchSampleImageBlob: async (filename) => {
+                        const res = await fetch(base + '/samples/' + filename, { mode: 'cors' });
+                        if (!res.ok) throw new Error('Could not fetch sample ' + filename);
+                        return await res.blob();
+                    }
+                };
+            })(window);
+        }
+
         // State Variables
         let currentImageBlob = null;
         let currentFileName = "";
@@ -1557,17 +1633,25 @@
         const metricCleanWaters = document.getElementById('metric-clean-waters');
         const metricAvgLatency = document.getElementById('metric-avg-latency');
 
-        // Init
-        window.addEventListener('DOMContentLoaded', () => {
+        // Robust Init
+        function initApp() {
             const currentUrl = SentinelAPI.getBaseUrl();
-            document.getElementById('api-url-input').value = currentUrl;
-            document.getElementById('api-configured-url').textContent = currentUrl;
+            const input = document.getElementById('api-url-input');
+            if (input) input.value = currentUrl;
+            const code = document.getElementById('api-configured-url');
+            if (code) code.textContent = currentUrl;
             checkApiHealth();
             renderSyntheticThumbnails();
             renderHistory();
             updateMetrics();
             setInterval(checkApiHealth, 10000);
-        });
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
 
         // Check API Health
         async function checkApiHealth() {
@@ -2063,8 +2147,15 @@
             }
 
             tempCanvas.toBlob((blob) => {
-                handleSelectedFile(blob, filename);
-                showToast(`Loaded preset: ${filename}`, '✨');
+                if (blob) {
+                    handleSelectedFile(blob, filename);
+                    showToast(`Loaded preset: ${filename}`, '✨');
+                } else {
+                    const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.92);
+                    displayLoadedImage(dataUrl, filename, 25000);
+                    fetch(dataUrl).then(r => r.blob()).then(b => { currentImageBlob = b; currentFileName = filename; });
+                    showToast(`Loaded preset: ${filename}`, '✨');
+                }
             }, 'image/jpeg', 0.92);
         }
 
