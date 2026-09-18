@@ -16,3 +16,5 @@ services:
         value: production
       - key: CORS_ORIGINS
         value: https://pravinthpravinth040-cpu.github.io,https://pravinthpravinth040-cpu.github.io/,http://localhost:8000,http://localhost:8080
+      - key: API_KEY
+        value: b21ac8a4-934f-4098-bd11-670247d64a96

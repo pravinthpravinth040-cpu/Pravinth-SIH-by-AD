@@ -22,6 +22,7 @@
     // (e.g. Render, Railway, Hugging Face, Koyeb).
     // ============================================================================
     var BACKEND_DEPLOYED_URL = "https://sentinel1-sar-oil-spill-api.onrender.com";
+    var DEFAULT_API_KEY = "b21ac8a4-934f-4098-bd11-670247d64a96";
 
     function sanitizeUrl(url) {
         if (!url) return '';
@@ -30,6 +31,32 @@
             clean = 'https://' + clean;
         }
         return clean;
+    }
+
+    function getApiKey() {
+        try {
+            if (typeof localStorage !== 'undefined') {
+                var stored = localStorage.getItem('sih_sar_api_key');
+                if (stored && stored.trim()) return stored.trim();
+            }
+        } catch (e) {}
+        if (typeof window !== 'undefined') {
+            var envKey = (window.__ENV__ && window.__ENV__.API_KEY) || window.API_KEY;
+            if (envKey && envKey.trim()) return envKey.trim();
+        }
+        return DEFAULT_API_KEY;
+    }
+
+    function getHeaders(extra) {
+        var h = {
+            'X-API-Key': getApiKey()
+        };
+        if (extra) {
+            for (var k in extra) {
+                if (extra.hasOwnProperty(k)) h[k] = extra[k];
+            }
+        }
+        return h;
     }
 
     /**
@@ -140,6 +167,7 @@
                     var response = await fetch(currentBaseUrl + '/health', {
                         method: 'GET',
                         mode: 'cors',
+                        headers: getHeaders(),
                         signal: controller.signal
                     });
                     clearTimeout(timer);
@@ -245,6 +273,7 @@
                     var response = await fetch(currentBaseUrl + '/predict', {
                         method: 'POST',
                         mode: 'cors',
+                        headers: getHeaders(),
                         body: formData,
                         signal: controller.signal
                     });
@@ -315,6 +344,7 @@
                 var response = await fetch(currentBaseUrl + '/predict-synthetic?preset=' + encodeURIComponent(presetName || 'slick'), {
                     method: 'POST',
                     mode: 'cors',
+                    headers: getHeaders(),
                     signal: controller.signal
                 });
                 clearTimeout(timer);
@@ -342,7 +372,10 @@
             limit = limit || 50;
             if (!this.isConfigured()) return [];
             try {
-                var res = await fetch(currentBaseUrl + '/history?limit=' + limit, { mode: 'cors' });
+                var res = await fetch(currentBaseUrl + '/history?limit=' + limit, {
+                    mode: 'cors',
+                    headers: getHeaders()
+                });
                 if (res.ok) {
                     var json = await res.json();
                     return json.records || [];
@@ -359,7 +392,11 @@
         clearRemoteHistory: async function () {
             if (!this.isConfigured()) return false;
             try {
-                var res = await fetch(currentBaseUrl + '/history', { method: 'DELETE', mode: 'cors' });
+                var res = await fetch(currentBaseUrl + '/history', {
+                    method: 'DELETE',
+                    mode: 'cors',
+                    headers: getHeaders()
+                });
                 return res.ok;
             } catch (e) {
                 console.warn('[SentinelAPI] Failed to clear remote history:', e);
@@ -373,7 +410,10 @@
         fetchApiInfo: async function () {
             if (!this.isConfigured()) return null;
             try {
-                var res = await fetch(currentBaseUrl + '/api-info', { mode: 'cors' });
+                var res = await fetch(currentBaseUrl + '/api-info', {
+                    mode: 'cors',
+                    headers: getHeaders()
+                });
                 if (res.ok) return await res.json();
             } catch (e) {}
             return null;
@@ -385,7 +425,10 @@
         fetchSamples: async function () {
             if (!this.isConfigured()) return { status: 'unconfigured', samples: [] };
             try {
-                var res = await fetch(currentBaseUrl + '/samples', { mode: 'cors' });
+                var res = await fetch(currentBaseUrl + '/samples', {
+                    mode: 'cors',
+                    headers: getHeaders()
+                });
                 if (res.ok) return await res.json();
             } catch (e) {}
             return { status: 'offline', samples: [] };
@@ -396,9 +439,31 @@
          */
         fetchSampleImageBlob: async function (filename) {
             if (!this.isConfigured()) throw new Error('Backend unconfigured');
-            var res = await fetch(currentBaseUrl + '/samples/' + filename, { mode: 'cors' });
+            var res = await fetch(currentBaseUrl + '/samples/' + filename, {
+                mode: 'cors',
+                headers: getHeaders()
+            });
             if (!res.ok) throw new Error('Could not fetch sample ' + filename);
             return await res.blob();
+        },
+
+        /**
+         * Gets the active API Key
+         */
+        getApiKey: function () {
+            return getApiKey();
+        },
+
+        /**
+         * Updates and persists the API Key
+         */
+        setApiKey: function (newKey) {
+            try {
+                if (typeof localStorage !== 'undefined') {
+                    localStorage.setItem('sih_sar_api_key', newKey);
+                }
+            } catch (e) {}
+            return newKey;
         }
     };
 

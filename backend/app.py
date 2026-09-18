@@ -23,7 +23,8 @@ from backend.config import (
     PORT,
     PROJECT_ROOT,
     CANDIDATE_SAMPLE_DIRS,
-    ALLOWED_ORIGINS
+    ALLOWED_ORIGINS,
+    API_KEY
 )
 from backend.inference import predict, load_inference_model, get_model_info
 from backend.database import (
