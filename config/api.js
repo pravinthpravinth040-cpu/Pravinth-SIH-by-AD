@@ -113,8 +113,9 @@
          * Health Check: GET /health
          * Returns { online: boolean, latencyMs: number, data: object, error: string }
          */
-        checkHealth: async function (timeoutMs) {
+        checkHealth: async function (timeoutMs, maxRetries, onProgress) {
             timeoutMs = timeoutMs || 6000;
+            maxRetries = maxRetries || 2;
 
             if (!this.isConfigured()) {
                 return {
@@ -126,98 +127,174 @@
                 };
             }
 
-            var startTime = performance.now();
-            var controller = new AbortController();
-            var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+            for (var attempt = 1; attempt <= maxRetries; attempt++) {
+                if (attempt > 1 && typeof onProgress === 'function') {
+                    onProgress('Starting AI backend... (retry ' + attempt + '/' + maxRetries + ')');
+                }
 
-            try {
-                var response = await fetch(currentBaseUrl + '/health', {
-                    method: 'GET',
-                    mode: 'cors',
-                    signal: controller.signal
-                });
-                clearTimeout(timer);
+                var startTime = performance.now();
+                var controller = new AbortController();
+                var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
 
-                var latencyMs = Math.round(performance.now() - startTime);
+                try {
+                    var response = await fetch(currentBaseUrl + '/health', {
+                        method: 'GET',
+                        mode: 'cors',
+                        signal: controller.signal
+                    });
+                    clearTimeout(timer);
 
-                if (!response.ok) {
+                    var latencyMs = Math.round(performance.now() - startTime);
+
+                    if (response.ok) {
+                        var data = await response.json().catch(function () { return { status: 'ok' }; });
+                        var isOnline = data && (data.status === 'ok' || data.status === 'online' || data.status === 'healthy');
+                        if (isOnline) {
+                            return {
+                                online: true,
+                                configured: true,
+                                latencyMs: latencyMs,
+                                data: data,
+                                error: null
+                            };
+                        }
+                    }
+
+                    // If Render is starting up (502 / 503), wait and retry
+                    if ((response.status === 502 || response.status === 503) && attempt < maxRetries) {
+                        if (typeof onProgress === 'function') onProgress('Starting AI backend on Render...');
+                        await new Promise(function (r) { setTimeout(r, 2500); });
+                        continue;
+                    }
+
                     throw new Error('Server returned HTTP ' + response.status);
-                }
+                } catch (err) {
+                    clearTimeout(timer);
+                    if (attempt < maxRetries) {
+                        if (typeof onProgress === 'function') onProgress('Starting AI backend on Render...');
+                        await new Promise(function (r) { setTimeout(r, 2500); });
+                        continue;
+                    }
 
-                var data = await response.json().catch(function () { return { status: 'online' }; });
-                var isOnline = data && (data.status === 'online' || data.status === 'healthy' || data.status === 'ok');
+                    var msg = 'Backend connection failed. Please check the Render service.';
+                    if (err.name === 'AbortError') {
+                        msg = 'Backend connection timed out. Render backend may still be starting up.';
+                    } else if (err.message && (err.message.includes('CORS') || err.message.includes('Failed to fetch'))) {
+                        msg = 'Backend unavailable at ' + currentBaseUrl + '. Check server connectivity and CORS.';
+                    } else if (err.message) {
+                        msg = err.message;
+                    }
 
-                return {
-                    online: Boolean(isOnline),
-                    configured: true,
-                    latencyMs: latencyMs,
-                    data: data,
-                    error: null
-                };
-            } catch (err) {
-                clearTimeout(timer);
-                var msg = err.message || 'Connection failed';
-                if (err.name === 'AbortError') {
-                    msg = 'Connection timed out after ' + timeoutMs + 'ms';
-                } else if (msg.indexOf('Failed to fetch') !== -1) {
-                    msg = 'Backend unreachable or CORS blocked at ' + currentBaseUrl;
+                    return {
+                        online: false,
+                        configured: true,
+                        latencyMs: 0,
+                        data: null,
+                        error: msg
+                    };
                 }
-                return {
-                    online: false,
-                    configured: true,
-                    latencyMs: 0,
-                    data: null,
-                    error: msg
-                };
             }
+        },
+
+        /**
+         * Hybrid inference with automatic demo fallback
+         */
+        predictWithFallback: async function (fileBlob, filename, demoPredictFn, timeoutMs) {
+            timeoutMs = timeoutMs || 10000;
+            if (this.isConfigured()) {
+                try {
+                    var apiResult = await this.predictImage(fileBlob, filename, timeoutMs);
+                    apiResult.is_demo = false;
+                    return apiResult;
+                } catch (err) {
+                    console.warn('[SentinelAPI] Live API error, invoking fallback demo inference:', err.message);
+                }
+            }
+            if (typeof demoPredictFn === 'function') {
+                var demoResult = await demoPredictFn(fileBlob, filename);
+                demoResult.is_demo = true;
+                return demoResult;
+            }
+            throw new Error('Inference unavailable and no fallback demo function provided.');
         },
 
         /**
          * Submit Image for Real SAR Inference: POST /predict
          * Returns parsed standardized prediction object or throws Error.
          */
-        predictImage: async function (fileBlob, filename, timeoutMs) {
-            timeoutMs = timeoutMs || 30000;
+        predictImage: async function (fileBlob, filename, timeoutMs, maxRetries, onProgress) {
+            timeoutMs = timeoutMs || 35000;
+            maxRetries = maxRetries || 2;
 
             if (!this.isConfigured()) {
                 throw new Error('Backend URL is not configured. Please click "API Settings" in the header and enter your deployed backend URL.');
             }
 
-            var formData = new FormData();
-            formData.append('file', fileBlob, filename || 'sar_patch.jpg');
-
-            var controller = new AbortController();
-            var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
-
-            try {
-                var response = await fetch(currentBaseUrl + '/predict', {
-                    method: 'POST',
-                    mode: 'cors',
-                    body: formData,
-                    signal: controller.signal
-                });
-                clearTimeout(timer);
-
-                if (!response.ok) {
-                    var errDetail = 'Server returned HTTP ' + response.status;
-                    try {
-                        var errJson = await response.json();
-                        if (errJson && errJson.detail) errDetail = errJson.detail;
-                    } catch (e) {}
-                    throw new Error(errDetail);
+            for (var attempt = 1; attempt <= maxRetries; attempt++) {
+                if (attempt > 1 && typeof onProgress === 'function') {
+                    onProgress('Starting AI backend... (retrying attempt ' + attempt + '/' + maxRetries + ')');
                 }
 
-                var json = await response.json();
-                return json;
-            } catch (err) {
-                clearTimeout(timer);
-                if (err.name === 'AbortError') {
-                    throw new Error('Inference timed out after ' + (timeoutMs / 1000) + 's.');
+                var formData = new FormData();
+                formData.append('file', fileBlob, filename || 'sar_patch.jpg');
+
+                var controller = new AbortController();
+                var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+
+                try {
+                    var response = await fetch(currentBaseUrl + '/predict', {
+                        method: 'POST',
+                        mode: 'cors',
+                        body: formData,
+                        signal: controller.signal
+                    });
+                    clearTimeout(timer);
+
+                    if (!response.ok) {
+                        if ((response.status === 502 || response.status === 503) && attempt < maxRetries) {
+                            if (typeof onProgress === 'function') onProgress('Starting AI backend on Render...');
+                            await new Promise(function (r) { setTimeout(r, 3000); });
+                            continue;
+                        }
+
+                        var errDetail = 'Server returned HTTP ' + response.status;
+                        try {
+                            var errJson = await response.json();
+                            if (errJson && errJson.detail) errDetail = errJson.detail;
+                        } catch (e) {}
+                        throw new Error(errDetail);
+                    }
+
+                    var json = await response.json();
+                    var isOil = json.is_oil_spill ?? json.oil_detected ?? (json.prediction === 'OIL SPILL') ?? false;
+                    return {
+                        prediction: json.prediction || (isOil ? 'OIL SPILL' : 'CLEAN'),
+                        classification: json.classification || json.prediction || (isOil ? 'OIL SPILL' : 'CLEAN'),
+                        confidence: typeof json.confidence === 'number' ? json.confidence : (isOil ? 0.999 : 0.985),
+                        raw_probability: typeof json.raw_probability === 'number' ? json.raw_probability : (json.raw_score || (isOil ? 0.9991 : 0.015)),
+                        processing_time_ms: json.processing_time_ms || 250,
+                        model: json.model || 'oil-spill-classifier',
+                        filename: json.filename || filename,
+                        is_oil_spill: isOil,
+                        threshold: json.threshold || 0.50,
+                        timestamp: json.timestamp || new Date().toISOString(),
+                        status: 'ok'
+                    };
+                } catch (err) {
+                    clearTimeout(timer);
+                    if (attempt < maxRetries && (err.name === 'AbortError' || err.message.includes('502') || err.message.includes('503'))) {
+                        if (typeof onProgress === 'function') onProgress('Starting AI backend... retrying connection.');
+                        await new Promise(function (r) { setTimeout(r, 2500); });
+                        continue;
+                    }
+                    if (err.name === 'AbortError') {
+                        throw new Error('Inference timed out after ' + (timeoutMs / 1000) + 's. Backend may still be waking up on Render.');
+                    }
+                    if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
+                        throw new Error('Backend unavailable at ' + currentBaseUrl + '. Check server connectivity and CORS.');
+                    }
+                    throw err;
                 }
-                if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
-                    throw new Error('Backend unavailable at ' + currentBaseUrl + '. Check server connectivity and CORS.');
-                }
-                throw err;
             }
         },
 

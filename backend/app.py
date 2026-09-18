@@ -54,10 +54,29 @@ app = FastAPI(
 )
 
 # Enable CORS for frontend integration (GitHub Pages, localhost, live server)
+cors_origins = [
+    "https://pravinthpravinth040-cpu.github.io",
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8000",
+    "http://localhost:8080",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8080",
+    "http://127.0.0.1:5500"
+]
+extra_cors = os.getenv("CORS_ORIGINS", "")
+if extra_cors:
+    for o in extra_cors.split(","):
+        o_clean = o.strip()
+        if o_clean and o_clean not in cors_origins:
+            cors_origins.append(o_clean)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://pravinthpravinth040-cpu\.github\.io.*",
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -66,8 +85,8 @@ app.add_middleware(
 def read_root():
     """Service status and API registry endpoint."""
     return {
-        "status": "online",
-        "service": "Sentinel-1 SAR Oil Spill API",
+        "status": "ok",
+        "service": "sentinel-1-sar-oil-spill-api",
         "message": "Oil Spill Detection API is running. Use POST /predict to upload an image.",
         "endpoints": {
             "health": "GET /health",
@@ -86,12 +105,13 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Liveness probe for monitoring platforms and frontend connectivity."""
+    """Liveness probe for Render, monitoring platforms, and frontend connectivity."""
     db_info = get_db_status()
     model_info = get_model_info()
     return {
-        "status": "online",
-        "service": "Sentinel-1 SAR Oil Spill API",
+        "status": "ok",
+        "service": "sentinel-1-sar-oil-spill-api",
+        "online": True,
         "database": db_info,
         "model": model_info
     }
@@ -181,21 +201,20 @@ async def predict_endpoint(file: UploadFile = File(...)):
 
     # 5. Build standardized response matching project requirements
     return JSONResponse(content={
-        "filename": filename,
-        "classification": classification_str,
-        "is_oil_spill": is_oil,
+        "prediction": "OIL SPILL" if is_oil else "CLEAN",
         "confidence": round(float(result["confidence"]), 4),
         "raw_probability": round(float(result["raw_score"]), 4),
-        "threshold": 0.50,
-        "model": result.get("model", "PyTorch ResNet / ConvNet"),
         "processing_time_ms": processing_time_ms,
-        "timestamp": now_iso,
-        # Backward compatibility aliases:
-        "prediction": "oil_spill" if is_oil else "clean_ocean",
+        "model": result.get("model", "oil-spill-classifier"),
+        "classification": classification_str,
+        "filename": filename,
+        "is_oil_spill": is_oil,
         "oil_detected": is_oil,
         "raw_score": round(float(result["raw_score"]), 4),
+        "threshold": 0.50,
+        "timestamp": now_iso,
         "record_id": record_id,
-        "status": "processed"
+        "status": "ok"
     })
 
 @app.post("/predict-synthetic")
@@ -260,22 +279,21 @@ async def predict_synthetic_endpoint(
     )
 
     return JSONResponse(content={
-        "filename": filename,
-        "preset": preset_name,
-        "classification": classification_str,
-        "is_oil_spill": is_oil,
+        "prediction": "OIL SPILL" if is_oil else "CLEAN",
         "confidence": round(float(result["confidence"]), 4),
         "raw_probability": round(float(result["raw_score"]), 4),
-        "threshold": 0.50,
-        "model": result.get("model", "PyTorch ResNet / ConvNet"),
         "processing_time_ms": processing_time_ms,
-        "timestamp": now_iso,
-        # Backward compatibility aliases:
-        "prediction": "oil_spill" if is_oil else "clean_ocean",
+        "model": result.get("model", "oil-spill-classifier"),
+        "preset": preset_name,
+        "classification": classification_str,
+        "filename": filename,
+        "is_oil_spill": is_oil,
         "oil_detected": is_oil,
         "raw_score": round(float(result["raw_score"]), 4),
+        "threshold": 0.50,
+        "timestamp": now_iso,
         "record_id": record_id,
-        "status": "processed"
+        "status": "ok"
     })
 
 @app.get("/history")

@@ -38,3 +38,8 @@ build/
 Thumbs.db
 .vscode/
 .idea/
+
+# Local databases
+*.db
+*.sqlite
+sar_audit_fallback.db

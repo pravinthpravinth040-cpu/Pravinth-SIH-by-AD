@@ -3,7 +3,8 @@
 # Cloud Production Dependencies
 # ==========================================================
 
---extra-index-url https://download.pytorch.org/whl/cpu
+--index-url https://download.pytorch.org/whl/cpu
+--extra-index-url https://pypi.org/simple
 
 # PyTorch Deep Learning Inference (CPU-optimized for cloud instances)
 torch>=2.0.0
