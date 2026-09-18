@@ -1,6 +1,8 @@
 import os
 import sys
+import io
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
@@ -54,8 +56,8 @@ app = FastAPI(
 # Enable CORS for frontend integration (GitHub Pages, localhost, live server)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -64,13 +66,16 @@ app.add_middleware(
 def read_root():
     """Service status and API registry endpoint."""
     return {
-        "status": "ok",
-        "service": "oil-spill-detector",
+        "status": "online",
+        "service": "Sentinel-1 SAR Oil Spill API",
         "message": "Oil Spill Detection API is running. Use POST /predict to upload an image.",
         "endpoints": {
             "health": "GET /health",
             "predict": "POST /predict",
+            "predict_synthetic": "POST /predict-synthetic",
             "history": "GET /history",
+            "clear_history": "DELETE /history",
+            "api_info": "GET /api-info",
             "stats": "GET /stats",
             "samples": "GET /samples",
             "documentation": "GET /docs"
@@ -85,17 +90,59 @@ def health_check():
     db_info = get_db_status()
     model_info = get_model_info()
     return {
-        "status": "healthy",
-        "service": "oil-spill-detector",
+        "status": "online",
+        "service": "Sentinel-1 SAR Oil Spill API",
         "database": db_info,
         "model": model_info
     }
 
+@app.get("/api-info")
+def get_api_info():
+    """Returns backend, model, and endpoint metadata."""
+    return {
+        "service": "Sentinel-1 SAR Oil Spill API",
+        "version": "1.0.0",
+        "status": "online",
+        "model": get_model_info(),
+        "database": get_db_status(),
+        "endpoints": {
+            "health": "GET /health",
+            "predict": "POST /predict",
+            "predict_synthetic": "POST /predict-synthetic",
+            "history": "GET /history",
+            "clear_history": "DELETE /history",
+            "api_info": "GET /api-info",
+            "stats": "GET /stats",
+            "samples": "GET /samples"
+        }
+    }
+
+def _resolve_sample_preset_path(preset_name: str) -> Optional[Path]:
+    """Finds image file on disk for quick presets."""
+    name_clean = preset_name.lower().strip()
+    target_files = []
+    if name_clean in ("slick", "oil", "oil_1", "sample_slick"):
+        target_files = ["oil_sample_1.jpg", "sample_oil_1.jpg"]
+    elif name_clean in ("calm", "clean_1", "clean_calm", "sample_calm"):
+        target_files = ["clean_sample_1.jpg", "sample_no_oil_1.jpg"]
+    elif name_clean in ("rough", "clean_2", "clean_rough", "sample_rough"):
+        target_files = ["sample_no_oil_2.jpg", "clean_sample_1.jpg"]
+    else:
+        target_files = ["oil_sample_1.jpg", "clean_sample_1.jpg"]
+
+    for candidate_dir in CANDIDATE_SAMPLE_DIRS:
+        if candidate_dir.exists():
+            for fname in target_files:
+                p = candidate_dir / fname
+                if p.exists() and p.is_file():
+                    return p
+    return None
+
 @app.post("/predict")
 async def predict_endpoint(file: UploadFile = File(...)):
     """
-    Accepts a SAR satellite image tile and returns whether an oil spill was detected.
-    Automatically logs telemetry into the MySQL database (prediction_records).
+    Accepts an uploaded SAR satellite image tile and returns oil spill classification.
+    Automatically logs telemetry into the database (prediction_records).
     """
     start_time = time.perf_counter()
 
@@ -117,28 +164,116 @@ async def predict_endpoint(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Inference error: {str(e)}")
 
     processing_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    filename = file.filename or "uploaded_sar_image.jpg"
+    is_oil = bool(result["oil_detected"])
+    classification_str = "OIL SPILL" if is_oil else "CLEAN OCEAN"
 
     # 4. Database Audit Persistence
     record_id = save_prediction(
-        filename=file.filename or "uploaded_image.jpg",
-        oil_detected=result["oil_detected"],
+        filename=filename,
+        oil_detected=is_oil,
         confidence=result["confidence"],
         raw_score=result["raw_score"],
         file_size_bytes=result.get("file_size_bytes"),
         image_sha256=result.get("image_sha256")
     )
 
-    # 5. Build standardized response matching API contract
-    prediction_label = "oil_spill" if result["oil_detected"] else "clean_ocean"
+    # 5. Build standardized response matching project requirements
     return JSONResponse(content={
-        "prediction": prediction_label,
-        "oil_detected": result["oil_detected"],
-        "confidence": round(result["confidence"], 4),
-        "raw_score": round(result["raw_score"], 4),
-        "raw_probability": round(result["raw_score"], 4),
-        "model": "ResNet-18",
-        "filename": file.filename or "unknown",
+        "filename": filename,
+        "classification": classification_str,
+        "is_oil_spill": is_oil,
+        "confidence": round(float(result["confidence"]), 4),
+        "raw_probability": round(float(result["raw_score"]), 4),
+        "threshold": 0.50,
+        "model": result.get("model", "PyTorch ResNet / ConvNet"),
         "processing_time_ms": processing_time_ms,
+        "timestamp": now_iso,
+        # Backward compatibility aliases:
+        "prediction": "oil_spill" if is_oil else "clean_ocean",
+        "oil_detected": is_oil,
+        "raw_score": round(float(result["raw_score"]), 4),
+        "record_id": record_id,
+        "status": "processed"
+    })
+
+@app.post("/predict-synthetic")
+async def predict_synthetic_endpoint(
+    preset: Optional[str] = Query(None),
+    file: Optional[UploadFile] = File(None)
+):
+    """
+    Supports the Sample Slick, Sample Calm, and Sample Rough quick test presets.
+    Loads real SAR sample images corresponding to each preset or accepts uploaded synthetic tiles.
+    """
+    start_time = time.perf_counter()
+    preset_name = (preset or "slick").lower().strip()
+    image_bytes = None
+    filename = f"preset_{preset_name}.jpg"
+
+    # 1. If file uploaded directly, use its contents
+    if file is not None:
+        image_bytes = await file.read()
+        filename = file.filename or filename
+
+    # 2. Otherwise load corresponding sample image from project disk
+    if not image_bytes:
+        sample_path = _resolve_sample_preset_path(preset_name)
+        if sample_path and sample_path.exists():
+            image_bytes = sample_path.read_bytes()
+            filename = sample_path.name
+        else:
+            # Fallback deterministic synthetic image generation if sample files are missing
+            from PIL import Image, ImageDraw
+            img = Image.new('RGB', (224, 224), color=(110, 110, 110))
+            draw = ImageDraw.Draw(img)
+            if "slick" in preset_name or "oil" in preset_name:
+                # Draw dark slick ellipse representing oil damping
+                draw.ellipse([40, 60, 180, 160], fill=(20, 20, 25))
+            else:
+                # Clean sea with natural speckle variations
+                draw.rectangle([0, 0, 224, 224], fill=(125, 125, 130))
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG")
+            image_bytes = buf.getvalue()
+
+    # 3. Run real inference
+    try:
+        result = predict(image_bytes)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Synthetic inference error: {str(e)}")
+
+    processing_time_ms = round((time.perf_counter() - start_time) * 1000, 2)
+    now_iso = datetime.utcnow().isoformat() + "Z"
+    is_oil = bool(result["oil_detected"])
+    classification_str = "OIL SPILL" if is_oil else "CLEAN OCEAN"
+
+    # 4. Save to history
+    record_id = save_prediction(
+        filename=filename,
+        oil_detected=is_oil,
+        confidence=result["confidence"],
+        raw_score=result["raw_score"],
+        file_size_bytes=len(image_bytes),
+        image_sha256=result.get("image_sha256")
+    )
+
+    return JSONResponse(content={
+        "filename": filename,
+        "preset": preset_name,
+        "classification": classification_str,
+        "is_oil_spill": is_oil,
+        "confidence": round(float(result["confidence"]), 4),
+        "raw_probability": round(float(result["raw_score"]), 4),
+        "threshold": 0.50,
+        "model": result.get("model", "PyTorch ResNet / ConvNet"),
+        "processing_time_ms": processing_time_ms,
+        "timestamp": now_iso,
+        # Backward compatibility aliases:
+        "prediction": "oil_spill" if is_oil else "clean_ocean",
+        "oil_detected": is_oil,
+        "raw_score": round(float(result["raw_score"]), 4),
         "record_id": record_id,
         "status": "processed"
     })
@@ -168,7 +303,7 @@ def clear_history_endpoint():
     success = clear_all_records()
     return {
         "status": "ok" if success else "error",
-        "message": "Audit history cleared" if success else "Failed to clear history"
+        "message": "Scan history cleared" if success else "Failed to clear history"
     }
 
 @app.get("/samples")

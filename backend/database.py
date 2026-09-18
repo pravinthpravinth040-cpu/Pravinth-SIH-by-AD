@@ -29,15 +29,23 @@ class PredictionRecord(Base):
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
     def to_dict(self) -> Dict[str, Any]:
+        is_oil = bool(self.oil_detected)
+        ts = self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None
         return {
             "id": self.id,
             "filename": self.filename,
-            "oil_detected": bool(self.oil_detected),
+            "classification": "OIL SPILL" if is_oil else "CLEAN OCEAN",
+            "is_oil_spill": is_oil,
+            "oil_detected": is_oil,
             "confidence": round(float(self.confidence), 4),
             "raw_score": round(float(self.raw_score), 4),
+            "raw_probability": round(float(self.raw_score), 4),
+            "threshold": 0.50,
+            "model": "PyTorch ResNet / ConvNet",
             "file_size_bytes": self.file_size_bytes,
             "image_sha256": self.image_sha256,
-            "created_at": self.created_at.strftime("%Y-%m-%d %H:%M:%S") if self.created_at else None
+            "timestamp": ts,
+            "created_at": ts
         }
 
 # Global DB state

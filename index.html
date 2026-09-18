@@ -1409,11 +1409,11 @@
                         </div>
                         <div class="telemetry-item">
                             <div class="telemetry-label">Architecture / Backbone</div>
-                            <div class="telemetry-val">PyTorch ResNet / ConvNet</div>
+                            <div class="telemetry-val" id="meta-architecture">PyTorch ResNet / ConvNet</div>
                         </div>
                         <div class="telemetry-item">
                             <div class="telemetry-label">Decision Threshold</div>
-                            <div class="telemetry-val">&ge; 0.50 Sigmoid Probability</div>
+                            <div class="telemetry-val" id="meta-threshold">&ge; 0.50 Sigmoid Probability</div>
                         </div>
                     </div>
                 </div>
@@ -1508,82 +1508,6 @@
     <script src="config/api.js"></script>
 
     <script>
-        // Inline guard: Ensure SentinelAPI is always defined even if external script is blocked
-        if (typeof window.SentinelAPI === 'undefined') {
-            (function (global) {
-                function isLocal() {
-                    const h = window.location.hostname;
-                    return h === 'localhost' || h === '127.0.0.1' || h === '0.0.0.0' || window.location.protocol === 'file:';
-                }
-                function sanitize(u) {
-                    if (!u) return '';
-                    let c = u.trim().replace(/\/+$/, '');
-                    if (!c.startsWith('http://') && !c.startsWith('https://')) c = 'https://' + c;
-                    return c;
-                }
-                function resolve() {
-                    try {
-                        const s = localStorage.getItem('sih_sar_api_url');
-                        if (s && s.trim()) return sanitize(s);
-                    } catch (e) {}
-                    if (window.__ENV__?.VITE_API_URL) return sanitize(window.__ENV__.VITE_API_URL);
-                    if (window.VITE_API_URL) return sanitize(window.VITE_API_URL);
-                    if (isLocal()) return 'http://localhost:8000';
-                    return 'https://YOUR-BACKEND-DOMAIN';
-                }
-                let base = resolve();
-                global.SentinelAPI = {
-                    getBaseUrl: () => base,
-                    setBaseUrl: (u) => {
-                        base = sanitize(u);
-                        try { localStorage.setItem('sih_sar_api_url', base); } catch (e) {}
-                        return base;
-                    },
-                    isPlaceholderUrl: () => !base || base.includes('YOUR-BACKEND-DOMAIN'),
-                    checkHealth: async (ms = 5000) => {
-                        if (base.includes('YOUR-BACKEND-DOMAIN')) return { online: false, latencyMs: 0, error: 'Unconfigured placeholder' };
-                        const st = performance.now();
-                        const ctrl = new AbortController();
-                        const tm = setTimeout(() => ctrl.abort(), ms);
-                        try {
-                            const res = await fetch(base + '/health', { method: 'GET', mode: 'cors', signal: ctrl.signal });
-                            clearTimeout(tm);
-                            if (!res.ok) throw new Error('HTTP ' + res.status);
-                            const d = await res.json().catch(() => ({}));
-                            return { online: true, latencyMs: Math.round(performance.now() - st), data: d };
-                        } catch (e) {
-                            clearTimeout(tm);
-                            return { online: false, latencyMs: 0, error: e.message };
-                        }
-                    },
-                    predictImage: async (blob, name, ms = 30000) => {
-                        if (base.includes('YOUR-BACKEND-DOMAIN')) throw new Error('Backend URL is not configured. Please set in API Settings.');
-                        const fd = new FormData();
-                        fd.append('file', blob, name || 'sar_patch.jpg');
-                        const ctrl = new AbortController();
-                        const tm = setTimeout(() => ctrl.abort(), ms);
-                        try {
-                            const res = await fetch(base + '/predict', { method: 'POST', mode: 'cors', body: fd, signal: ctrl.signal });
-                            clearTimeout(tm);
-                            if (!res.ok) {
-                                const err = await res.json().catch(() => ({}));
-                                throw new Error(err.detail || 'Server returned HTTP ' + res.status);
-                            }
-                            return await res.json();
-                        } catch (e) {
-                            clearTimeout(tm);
-                            throw e;
-                        }
-                    },
-                    fetchSampleImageBlob: async (filename) => {
-                        const res = await fetch(base + '/samples/' + filename, { mode: 'cors' });
-                        if (!res.ok) throw new Error('Could not fetch sample ' + filename);
-                        return await res.blob();
-                    }
-                };
-            })(window);
-        }
-
         // State Variables
         let currentImageBlob = null;
         let currentFileName = "";
@@ -1659,11 +1583,11 @@
             const text = document.getElementById('api-status-text');
             const pill = document.getElementById('api-status-pill');
 
-            const health = await SentinelAPI.checkHealth(5000);
+            const health = await SentinelAPI.checkHealth(6000);
             if (health.online) {
                 isApiOnline = true;
                 dot.className = 'status-dot online';
-                text.textContent = `🟢 API Online (${health.latencyMs}ms)`;
+                text.textContent = '🟢 API Online';
                 pill.title = `Backend Online: ${SentinelAPI.getBaseUrl()} (${health.latencyMs}ms)`;
             } else {
                 isApiOnline = false;
@@ -1852,7 +1776,7 @@
                 return;
             }
 
-            if (SentinelAPI.isPlaceholderUrl()) {
+            if (!SentinelAPI.isConfigured()) {
                 showToast('Backend URL not configured. Set your live API URL in API Settings.', '⚙️');
                 displayBackendUnavailable('Cloud backend URL is not configured. Click "API Settings" in the header and enter your deployed backend endpoint (e.g. on Render, Railway, or Hugging Face).');
                 return;
@@ -1864,7 +1788,7 @@
             badgeText.textContent = 'Scanning SAR Radar...';
             verdictTitle.textContent = 'Real AI Inference in Progress...';
             verdictTitle.style.color = 'var(--cyan-neon)';
-            verdictDesc.textContent = `Transmitting SAR satellite patch to ${SentinelAPI.getBaseUrl()} for ResNet-18 classification...`;
+            verdictDesc.textContent = `Transmitting SAR satellite patch to ${SentinelAPI.getBaseUrl()} for ResNet classification...`;
 
             const startTime = performance.now();
 
@@ -1919,7 +1843,7 @@
 
         // Display Real AI Inference Result
         function displayInferenceResult(result, durationMs) {
-            const isOil = result.oil_detected === true || result.prediction === 'oil_spill';
+            const isOil = result.is_oil_spill === true || result.oil_detected === true || result.classification === 'OIL SPILL' || result.prediction === 'oil_spill';
             const confidenceVal = typeof result.confidence === 'number' ? result.confidence : 0;
             const confPct = (confidenceVal * 100).toFixed(1);
 
@@ -1928,10 +1852,18 @@
                 : (typeof result.raw_score === 'number' ? result.raw_score : 0);
             const rawFormatted = Number(rawScoreVal).toFixed(4);
 
-            const modelArch = result.model || 'ResNet-18';
+            const modelArch = result.model || 'PyTorch ResNet / ConvNet';
             const latencyText = result.processing_time_ms ? `${result.processing_time_ms} ms (AI)` : `${durationMs} ms latency`;
 
             processingTime.textContent = latencyText;
+
+            const metaArchEl = document.getElementById('meta-architecture');
+            if (metaArchEl) metaArchEl.textContent = modelArch;
+
+            const metaThreshEl = document.getElementById('meta-threshold');
+            if (metaThreshEl && typeof result.threshold === 'number') {
+                metaThreshEl.innerHTML = `&ge; ${result.threshold.toFixed(2)} Sigmoid Probability`;
+            }
 
             if (isOil) {
                 resultCard.className = 'result-card glass-panel state-oil';
@@ -2048,11 +1980,14 @@
             metricAvgLatency.textContent = isApiOnline ? '~35 ms' : '--';
         }
 
-        function clearHistory() {
+        async function clearHistory() {
             scanHistory = [];
             localStorage.removeItem('sih_sar_history');
             renderHistory();
             updateMetrics();
+            if (isApiOnline && SentinelAPI.isConfigured()) {
+                await SentinelAPI.clearRemoteHistory();
+            }
             showToast('Scan history cleared', '🗑️');
         }
 
@@ -2115,11 +2050,19 @@
 
         async function loadSamplePreset(type) {
             let sampleFilename = "";
-            if (type === 'oil_1') sampleFilename = "oil_sample_1.jpg";
-            else if (type === 'clean_1') sampleFilename = "clean_sample_1.jpg";
-            else sampleFilename = "sample_no_oil_2.jpg";
+            let presetKey = "slick";
+            if (type === 'oil_1') {
+                sampleFilename = "oil_sample_1.jpg";
+                presetKey = "slick";
+            } else if (type === 'clean_1') {
+                sampleFilename = "clean_sample_1.jpg";
+                presetKey = "calm";
+            } else {
+                sampleFilename = "sample_no_oil_2.jpg";
+                presetKey = "rough";
+            }
 
-            if (isApiOnline && !SentinelAPI.isPlaceholderUrl()) {
+            if (isApiOnline && SentinelAPI.isConfigured()) {
                 try {
                     const blob = await SentinelAPI.fetchSampleImageBlob(sampleFilename);
                     handleSelectedFile(blob, sampleFilename);
