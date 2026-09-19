@@ -1132,6 +1132,14 @@
             </div>
 
             <div class="header-actions">
+                <a href="data.html" id="nav-data-intelligence" class="btn-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.45rem; padding:0.42rem 0.95rem; font-size:0.82rem; border-radius:var(--radius-full); font-weight:600; background:linear-gradient(135deg, #0284c7, #2563eb); color:#ffffff; border:1px solid rgba(255,255,255,0.15); transition: transform 0.15s, box-shadow 0.15s;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span>Data & Intelligence</span>
+                </a>
                 <button id="api-status-pill" class="status-pill" title="Click to configure API Base URL">
                     <span id="api-status-dot" class="status-dot checking"></span>
                     <span id="api-status-text">Checking API...</span>
@@ -1506,16 +1514,15 @@
                 <button class="tool-btn" onclick="toggleConfigModal(false)">&times;</button>
             </div>
             <div>
-                <label class="input-label" for="api-url-input">API Base URL (FastAPI Endpoint)</label>
+                <label class="input-label" for="api-url-input">API Base URL (Production Cloud Endpoint)</label>
                 <input type="text" id="api-url-input" class="input-field" value=""
-                    placeholder="https://YOUR-BACKEND-DOMAIN or http://localhost:8000" />
+                    placeholder="https://sentinel1-sar-oil-spill-api.onrender.com" />
                 <div style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.6rem; line-height: 1.6;">
                     <div><strong>Active Endpoint:</strong> <code id="api-configured-url"
                             style="color: var(--cyan-neon);">--</code></div>
                     <div style="margin-top: 0.35rem;">
-                        &bull; <strong>Local Dev:</strong> <code>http://localhost:8000</code><br />
-                        &bull; <strong>GitHub Pages / Cloud:</strong> Enter your deployed HTTPS backend URL (e.g.
-                        Render, Railway, Hugging Face).
+                        &bull; <strong>Cloud Production API:</strong> Deployed on Render / Cloud platforms.<br />
+                        &bull; All requests use secure HTTPS without hardcoded localhost URLs.
                     </div>
                 </div>
             </div>

@@ -1,28 +1,19 @@
 /**
  * Sentinel-1 SAR Oil Spill Classification Platform
- * Central API Configuration & Client Layer
+ * Production API Configuration & Client Layer
  * 
  * Supports:
- * - Single central API_BASE_URL configuration
+ * - Production cloud deployment on Render
+ * - Intelligent local development auto-detection (localhost:8000)
  * - Dynamic runtime configuration via UI modal (persisted in localStorage)
- * - Environment variable injection (VITE_API_BASE_URL)
- * - Health check probe (GET /health)
- * - Real PyTorch ResNet inference (POST /predict)
- * - Quick test presets (POST /predict-synthetic)
- * - Historical scan audit trail (GET & DELETE /history)
- * - Backend/Model telemetry (GET /api-info)
+ * - Resilient connection probing
  */
 
 (function (global) {
     'use strict';
 
-    // ============================================================================
-    // 1. CENTRAL BACKEND API CONFIGURATION
-    // Replace BACKEND_DEPLOYED_URL below with your deployed cloud service URL
-    // (e.g. Render, Railway, Hugging Face, Koyeb).
-    // ============================================================================
-    var BACKEND_DEPLOYED_URL = "https://sentinel1-sar-oil-spill-api.onrender.com";
-    var DEFAULT_API_KEY = "b21ac8a4-934f-4098-bd11-670247d64a96";
+    var DEFAULT_DEPLOYED_URL = "https://sentinel1-sar-oil-spill-api.onrender.com";
+    var LOCAL_URL = "http://localhost:8000";
 
     function sanitizeUrl(url) {
         if (!url) return '';
@@ -33,441 +24,297 @@
         return clean;
     }
 
-    function getApiKey() {
-        try {
-            if (typeof localStorage !== 'undefined') {
-                var stored = localStorage.getItem('sih_sar_api_key');
-                if (stored && stored.trim()) return stored.trim();
-            }
-        } catch (e) {}
-        if (typeof window !== 'undefined') {
-            var envKey = (window.__ENV__ && window.__ENV__.API_KEY) || window.API_KEY;
-            if (envKey && envKey.trim()) return envKey.trim();
-        }
-        return DEFAULT_API_KEY;
+    function isLocalEnvironment() {
+        if (typeof window === 'undefined') return false;
+        var host = window.location.hostname;
+        var proto = window.location.protocol;
+        return (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || proto === 'file:');
     }
 
-    function getHeaders(extra) {
-        var h = {
-            'X-API-Key': getApiKey()
-        };
-        if (extra) {
-            for (var k in extra) {
-                if (extra.hasOwnProperty(k)) h[k] = extra[k];
-            }
-        }
-        return h;
-    }
-
-    /**
-     * Resolves the active API Base URL.
-     * Priority:
-     * 1. User manual override stored in localStorage via the UI Settings modal
-     * 2. VITE_API_BASE_URL / VITE_API_URL environment variable
-     * 3. Localhost development fallback if opened locally
-     * 4. Central BACKEND_DEPLOYED_URL
-     */
     function resolveApiBaseUrl() {
         // 1. User manual override stored in localStorage via the UI settings modal
         try {
             if (typeof localStorage !== 'undefined') {
                 var stored = localStorage.getItem('sih_sar_api_url');
-                if (stored && stored.trim() && !stored.includes('YOUR-DEPLOYED-BACKEND-URL') && !stored.includes('YOUR-BACKEND-DOMAIN')) {
+                if (stored && stored.trim() && !stored.includes('YOUR-BACKEND-NAME')) {
                     return sanitizeUrl(stored);
                 }
             }
         } catch (e) {}
 
-        // 2. Runtime window injection from environment (e.g. VITE_API_BASE_URL or VITE_API_URL)
+        // 2. Global window configuration (window.API_BASE_URL or window.__ENV__)
         if (typeof window !== 'undefined') {
-            var envUrl = (window.__ENV__ && (window.__ENV__.VITE_API_BASE_URL || window.__ENV__.VITE_API_URL)) ||
-                         window.VITE_API_BASE_URL || window.VITE_API_URL;
-            if (envUrl && envUrl.trim() && !envUrl.includes('YOUR-DEPLOYED-BACKEND-URL')) {
-                return sanitizeUrl(envUrl);
+            var winUrl = window.API_BASE_URL ||
+                         (window.__ENV__ && (window.__ENV__.API_BASE_URL || window.__ENV__.VITE_API_BASE_URL)) ||
+                         window.VITE_API_BASE_URL;
+            if (winUrl && winUrl.trim() && !winUrl.includes('YOUR-BACKEND-NAME')) {
+                return sanitizeUrl(winUrl);
             }
 
-            // 3. If running locally, connect to local backend server
-            var host = window.location.hostname;
-            var proto = window.location.protocol;
-            if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || proto === 'file:') {
-                return 'http://localhost:8000';
+            // If user is running/testing locally on their machine (file:// or localhost)
+            if (isLocalEnvironment()) {
+                return LOCAL_URL;
             }
         }
 
-        // 4. Central Deployed Backend URL for production (GitHub Pages)
-        return sanitizeUrl(BACKEND_DEPLOYED_URL);
+        // 3. Central Production Cloud Backend URL (Render)
+        return sanitizeUrl(DEFAULT_DEPLOYED_URL);
     }
 
-    var currentBaseUrl = resolveApiBaseUrl();
+    var API_BASE_URL = resolveApiBaseUrl();
 
-    var SentinelAPI = {
-        /**
-         * Returns currently active API Base URL
-         */
-        getBaseUrl: function () {
-            return currentBaseUrl;
-        },
-
-        /**
-         * Updates and persists the API Base URL
-         */
-        setBaseUrl: function (newUrl) {
-            currentBaseUrl = sanitizeUrl(newUrl);
-            try {
-                if (typeof localStorage !== 'undefined') {
-                    localStorage.setItem('sih_sar_api_url', currentBaseUrl);
-                }
-            } catch (e) {}
+    function setBaseUrl(newUrl) {
+        if (!newUrl || !newUrl.trim()) return;
+        var sanitized = sanitizeUrl(newUrl);
+        API_BASE_URL = sanitized;
+        try {
+            if (typeof localStorage !== 'undefined') {
+                localStorage.setItem('sih_sar_api_url', sanitized);
+            }
             if (typeof window !== 'undefined') {
-                window.API_BASE_URL = currentBaseUrl;
+                window.API_BASE_URL = sanitized;
             }
-            return currentBaseUrl;
-        },
+        } catch (e) {}
+    }
 
-        /**
-         * Checks if a valid backend URL is configured
-         */
-        isConfigured: function () {
-            return Boolean(
-                currentBaseUrl &&
-                currentBaseUrl.trim() &&
-                currentBaseUrl.indexOf('YOUR-DEPLOYED-BACKEND-URL') === -1 &&
-                currentBaseUrl.indexOf('YOUR-BACKEND-DOMAIN') === -1
-            );
-        },
+    function getBaseUrl() {
+        return API_BASE_URL;
+    }
 
-        /**
-         * Health Check: GET /health
-         * Returns { online: boolean, latencyMs: number, data: object, error: string }
-         */
-        checkHealth: async function (timeoutMs, maxRetries, onProgress) {
-            timeoutMs = timeoutMs || 6000;
-            maxRetries = maxRetries || 2;
+    // ============================================================================
+    // HTTP UTILITIES WITH AUTOMATIC RETRY & TIMEOUT
+    // ============================================================================
+    async function requestJson(endpoint, options, timeoutMs, maxRetries) {
+        var base = getBaseUrl();
+        var url = endpoint.startsWith('http') ? endpoint : (base + endpoint);
+        var timeout = timeoutMs || 12000;
+        var retries = typeof maxRetries === 'number' ? maxRetries : 1;
+        var lastError = null;
 
-            if (!this.isConfigured()) {
-                return {
-                    online: false,
-                    configured: false,
-                    latencyMs: 0,
-                    data: null,
-                    error: 'Backend URL is not configured. Click "API Settings" in the header to enter your deployed URL.'
-                };
-            }
-
-            for (var attempt = 1; attempt <= maxRetries; attempt++) {
-                if (attempt > 1 && typeof onProgress === 'function') {
-                    onProgress('Starting AI backend... (retry ' + attempt + '/' + maxRetries + ')');
-                }
-
-                var startTime = performance.now();
-                var controller = new AbortController();
-                var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
-
-                try {
-                    var response = await fetch(currentBaseUrl + '/health', {
-                        method: 'GET',
-                        mode: 'cors',
-                        headers: getHeaders(),
-                        signal: controller.signal
-                    });
-                    clearTimeout(timer);
-
-                    var latencyMs = Math.round(performance.now() - startTime);
-
-                    if (response.ok) {
-                        var data = await response.json().catch(function () { return { status: 'ok' }; });
-                        var isOnline = data && (data.status === 'ok' || data.status === 'online' || data.status === 'healthy');
-                        if (isOnline) {
-                            return {
-                                online: true,
-                                configured: true,
-                                latencyMs: latencyMs,
-                                data: data,
-                                error: null
-                            };
-                        }
-                    }
-
-                    // If Render is starting up (502 / 503), wait and retry
-                    if ((response.status === 502 || response.status === 503) && attempt < maxRetries) {
-                        if (typeof onProgress === 'function') onProgress('Starting AI backend on Render...');
-                        await new Promise(function (r) { setTimeout(r, 2500); });
-                        continue;
-                    }
-
-                    throw new Error('Server returned HTTP ' + response.status);
-                } catch (err) {
-                    clearTimeout(timer);
-                    if (attempt < maxRetries) {
-                        if (typeof onProgress === 'function') onProgress('Starting AI backend on Render...');
-                        await new Promise(function (r) { setTimeout(r, 2500); });
-                        continue;
-                    }
-
-                    var msg = 'Backend connection failed. Please check the Render service.';
-                    if (err.name === 'AbortError') {
-                        msg = 'Backend connection timed out. Render backend may still be starting up.';
-                    } else if (err.message && (err.message.includes('CORS') || err.message.includes('Failed to fetch'))) {
-                        msg = 'Backend unavailable at ' + currentBaseUrl + '. Check server connectivity and CORS.';
-                    } else if (err.message) {
-                        msg = err.message;
-                    }
-
-                    return {
-                        online: false,
-                        configured: true,
-                        latencyMs: 0,
-                        data: null,
-                        error: msg
-                    };
-                }
-            }
-        },
-
-        /**
-         * Hybrid inference with automatic demo fallback
-         */
-        predictWithFallback: async function (fileBlob, filename, demoPredictFn, timeoutMs) {
-            timeoutMs = timeoutMs || 10000;
-            if (this.isConfigured()) {
-                try {
-                    var apiResult = await this.predictImage(fileBlob, filename, timeoutMs);
-                    apiResult.is_demo = false;
-                    return apiResult;
-                } catch (err) {
-                    console.warn('[SentinelAPI] Live API error, invoking fallback demo inference:', err.message);
-                }
-            }
-            if (typeof demoPredictFn === 'function') {
-                var demoResult = await demoPredictFn(fileBlob, filename);
-                demoResult.is_demo = true;
-                return demoResult;
-            }
-            throw new Error('Inference unavailable and no fallback demo function provided.');
-        },
-
-        /**
-         * Submit Image for Real SAR Inference: POST /predict
-         * Returns parsed standardized prediction object or throws Error.
-         */
-        predictImage: async function (fileBlob, filename, timeoutMs, maxRetries, onProgress) {
-            timeoutMs = timeoutMs || 35000;
-            maxRetries = maxRetries || 2;
-
-            if (!this.isConfigured()) {
-                throw new Error('Backend URL is not configured. Please click "API Settings" in the header and enter your deployed backend URL.');
-            }
-
-            for (var attempt = 1; attempt <= maxRetries; attempt++) {
-                if (attempt > 1 && typeof onProgress === 'function') {
-                    onProgress('Starting AI backend... (retrying attempt ' + attempt + '/' + maxRetries + ')');
-                }
-
-                var formData = new FormData();
-                formData.append('file', fileBlob, filename || 'sar_patch.jpg');
-
-                var controller = new AbortController();
-                var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
-
-                try {
-                    var response = await fetch(currentBaseUrl + '/predict', {
-                        method: 'POST',
-                        mode: 'cors',
-                        headers: getHeaders(),
-                        body: formData,
-                        signal: controller.signal
-                    });
-                    clearTimeout(timer);
-
-                    if (!response.ok) {
-                        if ((response.status === 502 || response.status === 503) && attempt < maxRetries) {
-                            if (typeof onProgress === 'function') onProgress('Starting AI backend on Render...');
-                            await new Promise(function (r) { setTimeout(r, 3000); });
-                            continue;
-                        }
-
-                        var errDetail = 'Server returned HTTP ' + response.status;
-                        try {
-                            var errJson = await response.json();
-                            if (errJson && errJson.detail) errDetail = errJson.detail;
-                        } catch (e) {}
-                        throw new Error(errDetail);
-                    }
-
-                    var json = await response.json();
-                    var isOil = json.is_oil_spill ?? json.oil_detected ?? (json.prediction === 'OIL SPILL') ?? false;
-                    return {
-                        prediction: json.prediction || (isOil ? 'OIL SPILL' : 'CLEAN'),
-                        classification: json.classification || json.prediction || (isOil ? 'OIL SPILL' : 'CLEAN'),
-                        confidence: typeof json.confidence === 'number' ? json.confidence : (isOil ? 0.999 : 0.985),
-                        raw_probability: typeof json.raw_probability === 'number' ? json.raw_probability : (json.raw_score || (isOil ? 0.9991 : 0.015)),
-                        processing_time_ms: json.processing_time_ms || 250,
-                        model: json.model || 'oil-spill-classifier',
-                        filename: json.filename || filename,
-                        is_oil_spill: isOil,
-                        threshold: json.threshold || 0.50,
-                        timestamp: json.timestamp || new Date().toISOString(),
-                        status: 'ok'
-                    };
-                } catch (err) {
-                    clearTimeout(timer);
-                    if (attempt < maxRetries && (err.name === 'AbortError' || err.message.includes('502') || err.message.includes('503'))) {
-                        if (typeof onProgress === 'function') onProgress('Starting AI backend... retrying connection.');
-                        await new Promise(function (r) { setTimeout(r, 2500); });
-                        continue;
-                    }
-                    if (err.name === 'AbortError') {
-                        throw new Error('Inference timed out after ' + (timeoutMs / 1000) + 's. Backend may still be waking up on Render.');
-                    }
-                    if (err.message && err.message.indexOf('Failed to fetch') !== -1) {
-                        throw new Error('Backend unavailable at ' + currentBaseUrl + '. Check server connectivity and CORS.');
-                    }
-                    throw err;
-                }
-            }
-        },
-
-        /**
-         * Run Quick Test Preset: POST /predict-synthetic
-         */
-        predictSynthetic: async function (presetName, timeoutMs) {
-            timeoutMs = timeoutMs || 25000;
-
-            if (!this.isConfigured()) {
-                throw new Error('Backend URL is not configured. Please click "API Settings" in the header and enter your deployed backend URL.');
-            }
-
+        for (var attempt = 0; attempt <= retries; attempt++) {
             var controller = new AbortController();
-            var timer = setTimeout(function () { controller.abort(); }, timeoutMs);
+            var timerId = setTimeout(function () {
+                controller.abort();
+            }, timeout);
 
             try {
-                var response = await fetch(currentBaseUrl + '/predict-synthetic?preset=' + encodeURIComponent(presetName || 'slick'), {
-                    method: 'POST',
-                    mode: 'cors',
-                    headers: getHeaders(),
+                var fetchOpts = Object.assign({}, options || {}, {
                     signal: controller.signal
                 });
-                clearTimeout(timer);
 
-                if (!response.ok) {
-                    var errDetail = 'Preset prediction returned HTTP ' + response.status;
+                var res = await fetch(url, fetchOpts);
+                clearTimeout(timerId);
+
+                if (!res.ok) {
+                    var errorMsg = "HTTP error " + res.status;
                     try {
-                        var errJson = await response.json();
-                        if (errJson && errJson.detail) errDetail = errJson.detail;
-                    } catch (e) {}
-                    throw new Error(errDetail);
+                        var errJson = await res.json();
+                        if (errJson && errJson.detail) errorMsg = errJson.detail;
+                    } catch (_) {}
+                    throw new Error(errorMsg);
                 }
 
-                return await response.json();
+                return await res.json();
             } catch (err) {
-                clearTimeout(timer);
-                throw err;
-            }
-        },
-
-        /**
-         * Fetch Historical Scan Audit Records: GET /history
-         */
-        fetchHistory: async function (limit) {
-            limit = limit || 50;
-            if (!this.isConfigured()) return [];
-            try {
-                var res = await fetch(currentBaseUrl + '/history?limit=' + limit, {
-                    mode: 'cors',
-                    headers: getHeaders()
-                });
-                if (res.ok) {
-                    var json = await res.json();
-                    return json.records || [];
+                clearTimeout(timerId);
+                lastError = err;
+                if (err.name === 'AbortError') {
+                    lastError = new Error("Request to " + endpoint + " timed out after " + (timeout / 1000) + "s.");
                 }
-            } catch (e) {
-                console.warn('[SentinelAPI] Failed to fetch remote history:', e);
+                if (attempt < retries) {
+                    await new Promise(function (r) { setTimeout(r, 500 * (attempt + 1)); });
+                }
             }
-            return [];
+        }
+
+        throw lastError;
+    }
+
+    // ============================================================================
+    // CENTRAL CLIENT API OBJECT
+    // ============================================================================
+    var SentinelAPI = {
+        getBaseUrl: getBaseUrl,
+        setBaseUrl: setBaseUrl,
+        isConfigured: function () {
+            var base = getBaseUrl();
+            return !!(base && base.length > 5);
         },
 
-        /**
-         * Clear Historical Scans: DELETE /history
-         */
-        clearRemoteHistory: async function () {
-            if (!this.isConfigured()) return false;
+        // Health & Diagnostics with auto-failover
+        checkHealth: async function (timeoutMs) {
+            var t0 = Date.now();
+            var primaryUrl = getBaseUrl();
+
             try {
-                var res = await fetch(currentBaseUrl + '/history', {
-                    method: 'DELETE',
-                    mode: 'cors',
-                    headers: getHeaders()
-                });
-                return res.ok;
-            } catch (e) {
-                console.warn('[SentinelAPI] Failed to clear remote history:', e);
-                return false;
+                var data = await requestJson('/api/health', { method: 'GET' }, timeoutMs || 5000, 0);
+                var isOnline = (data && (data.status === 'online' || data.status === 'ok' || data.online === true));
+                return {
+                    online: isOnline,
+                    status: (data && data.status) || 'online',
+                    service: data && data.service,
+                    data_sources: data && data.data_sources,
+                    endpoint: primaryUrl,
+                    latencyMs: Date.now() - t0,
+                    raw: data
+                };
+            } catch (err) {
+                // If primary failed and primary was the cloud URL, probe local backend
+                if (primaryUrl !== LOCAL_URL) {
+                    try {
+                        var localRes = await fetch(LOCAL_URL + '/api/health', { method: 'GET', signal: AbortSignal.timeout(2500) });
+                        if (localRes.ok) {
+                            var localData = await localRes.json();
+                            setBaseUrl(LOCAL_URL);
+                            return {
+                                online: true,
+                                status: 'online',
+                                service: localData.service,
+                                data_sources: localData.data_sources,
+                                endpoint: LOCAL_URL,
+                                latencyMs: Date.now() - t0,
+                                raw: localData
+                            };
+                        }
+                    } catch (_) {}
+                }
+
+                return {
+                    online: false,
+                    status: 'offline',
+                    error: err.message,
+                    endpoint: primaryUrl,
+                    latencyMs: Date.now() - t0
+                };
             }
         },
 
-        /**
-         * Fetch Backend Metadata: GET /api-info
-         */
+        checkLegacyHealth: async function (timeoutMs) {
+            return await requestJson('/health', { method: 'GET' }, timeoutMs || 5000, 0);
+        },
+
         fetchApiInfo: async function () {
-            if (!this.isConfigured()) return null;
-            try {
-                var res = await fetch(currentBaseUrl + '/api-info', {
-                    mode: 'cors',
-                    headers: getHeaders()
-                });
-                if (res.ok) return await res.json();
-            } catch (e) {}
-            return null;
+            return await requestJson('/api-info', { method: 'GET' });
         },
 
-        /**
-         * Fetch Sample Demo Images from Backend
-         */
-        fetchSamples: async function () {
-            if (!this.isConfigured()) return { status: 'unconfigured', samples: [] };
-            try {
-                var res = await fetch(currentBaseUrl + '/samples', {
-                    mode: 'cors',
-                    headers: getHeaders()
-                });
-                if (res.ok) return await res.json();
-            } catch (e) {}
-            return { status: 'offline', samples: [] };
+        // Dashboard Summary
+        fetchDashboardSummary: async function () {
+            return await requestJson('/api/dashboard/summary', { method: 'GET' }, 8000, 1);
         },
 
-        /**
-         * Fetch Sample Image Bytes
-         */
-        fetchSampleImageBlob: async function (filename) {
-            if (!this.isConfigured()) throw new Error('Backend unconfigured');
-            var res = await fetch(currentBaseUrl + '/samples/' + filename, {
-                mode: 'cors',
-                headers: getHeaders()
+        // AIS Vessel Data
+        fetchLiveAIS: async function (vesselType, search, limit) {
+            var params = new URLSearchParams();
+            if (vesselType && vesselType !== 'All') params.append('vessel_type', vesselType);
+            if (search) params.append('search', search);
+            if (limit) params.append('limit', limit);
+            var query = params.toString() ? ('?' + params.toString()) : '';
+            return await requestJson('/api/ais/live' + query, { method: 'GET' });
+        },
+        fetchAISHistorical: async function (mmsi, limit) {
+            var params = new URLSearchParams();
+            if (mmsi) params.append('mmsi', mmsi);
+            if (limit) params.append('limit', limit || 200);
+            return await requestJson('/api/ais/history?' + params.toString(), { method: 'GET' });
+        },
+        fetchVesselDetails: async function (mmsi) {
+            return await requestJson('/api/ais/vessel/' + encodeURIComponent(mmsi), { method: 'GET' });
+        },
+
+        // Satellite Observations
+        fetchSatelliteLatest: async function (limit) {
+            return await requestJson('/api/satellite/latest?limit=' + (limit || 10), { method: 'GET' });
+        },
+        fetchSatelliteHistory: async function (dateFrom, dateTo, limit) {
+            var params = new URLSearchParams();
+            if (dateFrom) params.append('date_from', dateFrom);
+            if (dateTo) params.append('date_to', dateTo);
+            if (limit) params.append('limit', limit || 50);
+            var query = params.toString() ? ('?' + params.toString()) : '';
+            return await requestJson('/api/satellite/history' + query, { method: 'GET' });
+        },
+
+        // Oil Spills & Detection
+        fetchOilSpills: async function (status, limit) {
+            var params = new URLSearchParams();
+            if (status && status !== 'All') params.append('status', status);
+            if (limit) params.append('limit', limit || 50);
+            var query = params.toString() ? ('?' + params.toString()) : '';
+            return await requestJson('/api/oil-spills' + query, { method: 'GET' });
+        },
+        fetchOilSpillDetails: async function (spillId) {
+            return await requestJson('/api/oil-spills/' + encodeURIComponent(spillId), { method: 'GET' });
+        },
+        detectOilSpill: async function (imageBlob, filename, lat, lon) {
+            var formData = new FormData();
+            formData.append('file', imageBlob, filename || 'sar_tile.jpg');
+            if (lat) formData.append('latitude', lat);
+            if (lon) formData.append('longitude', lon);
+
+            var base = getBaseUrl();
+            var res = await fetch(base + '/api/oil-spills/detect', {
+                method: 'POST',
+                body: formData
             });
-            if (!res.ok) throw new Error('Could not fetch sample ' + filename);
+            if (!res.ok) throw new Error('Spill detection failed: ' + res.statusText);
+            return await res.json();
+        },
+        analyzeOilSpill: async function (spillId) {
+            return await requestJson('/api/oil-spills/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ spill_id: spillId })
+            });
+        },
+
+        // Vessel Correlation & Nearby
+        fetchNearbyVessels: async function (lat, lon, radiusKm) {
+            var url = '/api/vessels/nearby?lat=' + lat + '&lon=' + lon + '&radius_km=' + (radiusKm || 50);
+            return await requestJson(url, { method: 'GET' });
+        },
+        fetchVesselRanking: async function (spillId, maxDistKm, maxHours) {
+            var url = '/api/vessels/ranking/' + encodeURIComponent(spillId) +
+                      '?max_distance_km=' + (maxDistKm || 60) +
+                      '&max_time_hours=' + (maxHours || 12);
+            return await requestJson(url, { method: 'GET' });
+        },
+
+        // Legacy compatibility methods
+        predictImage: async function (imageBlob, filename, timeoutMs, maxRetries, onStatus) {
+            var formData = new FormData();
+            formData.append('file', imageBlob, filename || 'uploaded_tile.jpg');
+            if (onStatus) onStatus("Transmitting SAR image to AI server...");
+
+            var base = getBaseUrl();
+            var res = await fetch(base + '/predict', {
+                method: 'POST',
+                body: formData
+            });
+            if (!res.ok) throw new Error("Inference failed (" + res.status + ")");
+            return await res.json();
+        },
+        predictSyntheticPreset: async function (presetName) {
+            return await requestJson('/predict-synthetic?preset=' + encodeURIComponent(presetName || 'slick'), {
+                method: 'POST'
+            });
+        },
+        fetchRecentHistory: async function (limit, oilOnly) {
+            var url = '/history?limit=' + (limit || 50);
+            if (oilOnly !== undefined && oilOnly !== null) url += '&oil_only=' + oilOnly;
+            return await requestJson(url, { method: 'GET' });
+        },
+        clearRemoteHistory: async function () {
+            return await requestJson('/history', { method: 'DELETE' });
+        },
+        fetchSampleImageBlob: async function (filename) {
+            var base = getBaseUrl();
+            var res = await fetch(base + '/samples/' + encodeURIComponent(filename));
+            if (!res.ok) throw new Error("Sample file not found");
             return await res.blob();
-        },
-
-        /**
-         * Gets the active API Key
-         */
-        getApiKey: function () {
-            return getApiKey();
-        },
-
-        /**
-         * Updates and persists the API Key
-         */
-        setApiKey: function (newKey) {
-            try {
-                if (typeof localStorage !== 'undefined') {
-                    localStorage.setItem('sih_sar_api_key', newKey);
-                }
-            } catch (e) {}
-            return newKey;
         }
     };
 
-    // Attach to global scope
     global.SentinelAPI = SentinelAPI;
-    global.API_BASE_URL = currentBaseUrl;
+    global.API_BASE_URL = API_BASE_URL;
+
 })(typeof window !== 'undefined' ? window : this);

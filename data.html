@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Data & Intelligence Dashboard — SpillWatch AI</title>
+    <meta name="description"
+        content="Maritime live data, AIS tracking, Sentinel-1 SAR observations, and oil spill vessel correlation dashboard." />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- Leaflet Map CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <style>
+        :root {
+            --bg-dark: #103660;
+            --bg-card: rgba(8, 15, 40, 0.85);
+            --bg-card-hover: rgba(15, 28, 70, 0.95);
+            --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-focus: rgba(0, 150, 255, 0.55);
+
+            --cyan-neon: #00aaff;
+            --cyan-glow: rgba(0, 150, 255, 0.30);
+            --blue-accent: #38bdf8;
+            --purple-accent: #818cf8;
+
+            --danger-red: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.35);
+            --danger-bg: rgba(239, 68, 68, 0.12);
+
+            --success-green: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.35);
+            --success-bg: rgba(16, 185, 129, 0.12);
+
+            --warning-amber: #f59e0b;
+            --warning-bg: rgba(245, 158, 11, 0.15);
+
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-subtle: #64748b;
+
+            --radius-sm: 8px;
+            --radius-md: 14px;
+            --radius-lg: 20px;
+            --radius-full: 9999px;
+
+            --font-heading: 'Outfit', sans-serif;
+            --font-body: 'Outfit', sans-serif;
+            --font-code: 'JetBrains Mono', monospace;
+            --font-tech: 'Space Grotesk', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image:
+                radial-gradient(circle at 15% 15%, rgba(0, 100, 255, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.09) 0%, transparent 45%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+            color: var(--text-main);
+            font-family: var(--font-body);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(10, 15, 29, 0.6);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 116, 139, 0.4);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 150, 255, 0.65);
+        }
+
+        .glass-panel {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.25s, box-shadow 0.25s;
+        }
+
+        .glass-panel:hover {
+            border-color: rgba(255, 255, 255, 0.14);
+        }
+
+        /* Header */
+        header {
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(7, 11, 19, 0.90);
+            backdrop-filter: blur(14px);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+
+        .header-container {
+            max-width: 1560px;
+            margin: 0 auto;
+            padding: 0.85rem 1.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .radar-icon-badge {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 20px var(--cyan-glow);
+        }
+
+        .brand-title {
+            font-family: var(--font-tech);
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 40%, var(--cyan-neon));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-subtitle {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            font-family: var(--font-code);
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .brand-tag {
+            background: rgba(0, 100, 255, 0.18);
+            color: var(--cyan-neon);
+            border: 1px solid rgba(0, 100, 255, 0.35);
+            padding: 0.1rem 0.45rem;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 0.68rem;
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-family: var(--font-body);
+            font-size: 0.84rem;
+            font-weight: 500;
+            padding: 0.45rem 0.85rem;
+            border-radius: var(--radius-full);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            border: 1px solid transparent;
+        }
+
+        .nav-link:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-link.active {
+            color: var(--cyan-neon);
+            background: rgba(0, 150, 255, 0.12);
+            border-color: rgba(0, 150, 255, 0.3);
+            font-weight: 600;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.9rem;
+            border-radius: var(--radius-full);
+            font-size: 0.78rem;
+            font-family: var(--font-code);
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid var(--border-subtle);
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--text-main);
+        }
+
+        .status-pill:hover {
+            border-color: var(--cyan-neon);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-subtle);
+            transition: all 0.3s;
+        }
+
+        .status-dot.online {
+            background: var(--success-green);
+            box-shadow: 0 0 10px var(--success-green);
+        }
+
+        .status-dot.offline {
+            background: var(--danger-red);
+            box-shadow: 0 0 8px var(--danger-red);
+        }
+
+        .btn-refresh {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-main);
+            padding: 0.42rem 0.85rem;
+            border-radius: var(--radius-full);
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-family: var(--font-body);
+            transition: all 0.2s;
+        }
+
+        .btn-refresh:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--cyan-neon);
+        }
+
+        .btn-refresh.spinning svg {
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Offline Warning Banner */
+        #offline-alert {
+            display: none;
+            background: linear-gradient(90deg, rgba(239, 68, 68, 0.95), rgba(185, 28, 28, 0.95));
+            color: white;
+            padding: 0.65rem 1.75rem;
+            font-size: 0.82rem;
+            font-family: var(--font-body);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+            position: relative;
+            z-index: 999;
+        }
+
+        /* Main Container */
+        main {
+            max-width: 1560px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 1.5rem 1.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            flex: 1;
+        }
+
+        /* System Status Bar */
+        .system-status-bar {
+            padding: 1rem 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .system-title-group {
+            display: flex;
+            align-items: center;
+            gap: 0.9rem;
+        }
+
+        .system-title {
+            font-family: var(--font-tech);
+            font-size: 1.15rem;
+            font-weight: 700;
+        }
+
+        .source-badges {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.65rem;
+            border-radius: var(--radius-full);
+            font-size: 0.74rem;
+            font-family: var(--font-code);
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .tag-live {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border-color: rgba(16, 185, 129, 0.35);
+        }
+
+        .tag-historical {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border-color: rgba(245, 158, 11, 0.35);
+        }
+
+        .tag-dataset {
+            background: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border-color: rgba(56, 189, 248, 0.35);
+        }
+
+        .last-updated-text {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-family: var(--font-code);
+        }
+
+        /* Metrics Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+        }
+
+        .metric-card {
+            padding: 1.15rem 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 1.1rem;
+        }
+
+        .metric-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+        }
+
+        .metric-val {
+            font-family: var(--font-tech);
+            font-size: 1.6rem;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+
+        .metric-lbl {
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            margin-top: 0.2rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Layout Grid: Left Map & Right Detail Panels */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1.6fr 1fr;
+            gap: 1.5rem;
+            align-items: start;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Map Container */
+        .map-card {
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+        }
+
+        .map-header {
+            padding: 0.9rem 1.4rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(7, 11, 19, 0.6);
+        }
+
+        .map-title {
+            font-family: var(--font-tech);
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .map-layer-toggles {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            flex-wrap: wrap;
+        }
+
+        .layer-btn {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            padding: 0.25rem 0.55rem;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-family: var(--font-code);
+            cursor: pointer;
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .layer-btn.active {
+            color: var(--cyan-neon);
+            border-color: rgba(0, 150, 255, 0.4);
+            background: rgba(0, 150, 255, 0.12);
+        }
+
+        #intelligence-map {
+            width: 100%;
+            flex: 1;
+            background: #091322;
+        }
+
+        /* Side Detail / Inspector Card */
+        .side-card {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .panel-header {
+            padding: 1rem 1.4rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-family: var(--font-tech);
+            font-size: 1.05rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Correlation Table Card */
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table.intel-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            text-align: left;
+        }
+
+        table.intel-table th {
+            background: rgba(0, 0, 0, 0.4);
+            color: var(--text-muted);
+            padding: 0.75rem 1rem;
+            font-weight: 600;
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--border-subtle);
+            white-space: nowrap;
+        }
+
+        table.intel-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+        table.intel-table tr:hover td {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .rank-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            font-family: var(--font-code);
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .rank-1 {
+            background: rgba(239, 68, 68, 0.25);
+            color: #f87171;
+            border: 1px solid #ef4444;
+        }
+
+        .rank-2 {
+            background: rgba(245, 158, 11, 0.25);
+            color: #fbbf24;
+            border: 1px solid #f59e0b;
+        }
+
+        .rank-3 {
+            background: rgba(56, 189, 248, 0.25);
+            color: #38bdf8;
+            border: 1px solid #38bdf8;
+        }
+
+        .risk-pill {
+            padding: 0.2rem 0.55rem;
+            border-radius: var(--radius-full);
+            font-size: 0.72rem;
+            font-weight: 600;
+            font-family: var(--font-code);
+            display: inline-block;
+        }
+
+        .risk-high {
+            background: var(--danger-bg);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.35);
+        }
+
+        .risk-medium {
+            background: var(--warning-bg);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.35);
+        }
+
+        .risk-low {
+            background: rgba(16, 185, 129, 0.12);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        /* Disclaimer Box */
+        .disclaimer-banner {
+            padding: 0.75rem 1.1rem;
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px dashed rgba(245, 158, 11, 0.35);
+            border-radius: var(--radius-sm);
+            color: #fde68a;
+            font-size: 0.76rem;
+            line-height: 1.5;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.6rem;
+        }
+
+        /* Search & Filter Bar */
+        .filter-toolbar {
+            padding: 0.9rem 1.4rem;
+            border-bottom: 1px solid var(--border-subtle);
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 220px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 0.45rem 0.85rem;
+            color: var(--text-main);
+            font-size: 0.82rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--cyan-neon);
+        }
+
+        .filter-select {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-sm);
+            padding: 0.45rem 0.85rem;
+            color: var(--text-main);
+            font-size: 0.82rem;
+            outline: none;
+        }
+
+        /* Tabs Navigation */
+        .tabs-header {
+            display: flex;
+            border-bottom: 1px solid var(--border-subtle);
+            background: rgba(0, 0, 0, 0.35);
+            padding: 0 1rem;
+            gap: 0.5rem;
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 0.85rem 1.1rem;
+            font-family: var(--font-body);
+            font-size: 0.84rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+        }
+
+        .tab-btn.active {
+            color: var(--cyan-neon);
+            border-bottom-color: var(--cyan-neon);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            padding: 1.25rem 1.4rem;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Scan Audit History Styles */
+        .history-thumb {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            object-fit: cover;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(0, 0, 0, 0.5);
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .history-thumb-placeholder {
+            width: 36px;
+            height: 36px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(15, 23, 42, 0.7);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            vertical-align: middle;
+        }
+
+        .badge-classified {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.22rem 0.65rem;
+            border-radius: var(--radius-full);
+            font-family: var(--font-code);
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .badge-classified.oil {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+        }
+
+        .badge-classified.clean {
+            background: rgba(16, 185, 129, 0.18);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.45);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+        }
+
+        .badge-classified.inconclusive {
+            background: rgba(245, 158, 11, 0.18);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.45);
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border-subtle);
+            padding: 1.25rem 1.75rem;
+            font-size: 0.78rem;
+            color: var(--text-subtle);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 1560px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Modal Backdrop */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 9, 20, 0.85);
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 3000;
+        }
+
+        .modal-backdrop.open {
+            display: flex;
+        }
+
+        #toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #0f172a;
+            border: 1px solid var(--cyan-neon);
+            color: var(--text-main);
+            padding: 0.75rem 1.25rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            font-family: var(--font-code);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2000;
+        }
+
+        #toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <a href="index.html" class="brand-group" title="Back to Scanner">
+                <div class="radar-icon-badge">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a10 10 0 1 0 10 10"></path>
+                        <path d="M12 6a6 6 0 1 0 6 6"></path>
+                        <path d="M12 10a2 2 0 1 0 2 2"></path>
+                        <path d="m12 12 5-5"></path>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-title">SpillWatch Intelligence</div>
+                    <div class="brand-subtitle">
+                        <span>Sentinel-1 SAR &middot; AIS Tracking</span>
+                        <span class="brand-tag">DATA PLATFORM</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- Navigation Links -->
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">
+                    <span>🛰️</span>
+                    <span>AI Scanner</span>
+                </a>
+                <a href="data.html" class="nav-link active">
+                    <span>📊</span>
+                    <span>Data & Intelligence</span>
+                </a>
+            </div>
+
+            <div class="header-actions">
+                <button id="refresh-btn" class="btn-refresh" title="Refresh Live Data">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                    </svg>
+                    <span>Refresh</span>
+                </button>
+                <button id="api-status-pill" class="status-pill" onclick="toggleConfigModal(true)" title="Click to view or edit API configuration">
+                    <span id="api-status-dot" class="status-dot online"></span>
+                    <span id="api-status-text">Connecting...</span>
+                </button>
+                <button id="config-modal-btn" class="btn-refresh" onclick="toggleConfigModal(true)" title="API Settings">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>Settings</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Offline Alert Banner (shown only when API is unreachable) -->
+    <div id="offline-alert">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+            <span>⚠️</span>
+            <span><strong>Backend Currently Unavailable:</strong> Displaying cached historical maritime data. Retrying live connection...</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+            <button onclick="toggleConfigModal(true)" style="background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.4); color:white; padding:0.25rem 0.65rem; border-radius:4px; font-size:0.75rem; cursor:pointer;">API Settings</button>
+            <button onclick="fetchDashboardData()" style="background:rgba(255,255,255,0.35); border:1px solid rgba(255,255,255,0.6); color:white; padding:0.25rem 0.65rem; border-radius:4px; font-size:0.75rem; font-weight:600; cursor:pointer;">Retry Now</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main>
+
+        <!-- System Status & Data Feed Attributions -->
+        <div class="system-status-bar glass-panel">
+            <div class="system-title-group">
+                <div class="system-title">DATA & INTELLIGENCE DASHBOARD</div>
+                <div class="source-badges">
+                    <div class="source-badge">
+                        <span>AIS:</span>
+                        <span id="badge-ais-source" class="tag-historical">HISTORICAL</span>
+                    </div>
+                    <div class="source-badge">
+                        <span>Satellite:</span>
+                        <span id="badge-sat-source" class="tag-dataset">SENTINEL-1</span>
+                    </div>
+                    <div class="source-badge">
+                        <span>Database:</span>
+                        <span id="badge-db-source" class="tag-live">SQLITE/POSTGRES</span>
+                    </div>
+                    <div class="source-badge">
+                        <span>AI Model:</span>
+                        <span id="badge-ai-source" class="tag-live">ACTIVE</span>
+                    </div>
+                </div>
+            </div>
+            <div class="last-updated-text">
+                Last updated: <span id="last-updated-time" style="color:var(--cyan-neon);">--:--:--</span> &bull; Auto-refreshing in <span id="countdown-sec">30</span>s
+            </div>
+        </div>
+
+        <!-- Metrics Overview Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card glass-panel">
+                <div class="metric-icon" style="background:rgba(56, 189, 248, 0.15); color:#38bdf8;">🚢</div>
+                <div>
+                    <div class="metric-val" id="val-total-vessels">0</div>
+                    <div class="metric-lbl">Tracked AIS Vessels</div>
+                </div>
+            </div>
+            <div class="metric-card glass-panel">
+                <div class="metric-icon" style="background:rgba(239, 68, 68, 0.15); color:#f87171;">🛢️</div>
+                <div>
+                    <div class="metric-val" id="val-oil-spills" style="color:#f87171;">0</div>
+                    <div class="metric-lbl">Detected Oil Spills</div>
+                </div>
+            </div>
+            <div class="metric-card glass-panel">
+                <div class="metric-icon" style="background:rgba(245, 158, 11, 0.15); color:#fbbf24;">⚓</div>
+                <div>
+                    <div class="metric-val" id="val-tankers-active" style="color:#fbbf24;">0</div>
+                    <div class="metric-lbl">Tankers Active</div>
+                </div>
+            </div>
+            <div class="metric-card glass-panel">
+                <div class="metric-icon" style="background:rgba(129, 140, 248, 0.15); color:#818cf8;">🛰️</div>
+                <div>
+                    <div class="metric-val" id="val-sat-scenes">0</div>
+                    <div class="metric-lbl">SAR Granules Indexed</div>
+                </div>
+            </div>
+            <div class="metric-card glass-panel" onclick="switchTab('tab-audit')" style="cursor:pointer;" title="Click to view Scan Audit History">
+                <div class="metric-icon" style="background:rgba(16, 185, 129, 0.15); color:#34d399;">🕒</div>
+                <div>
+                    <div class="metric-val" id="val-audit-scans">0</div>
+                    <div class="metric-lbl">AI Scans Archived</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid: Interactive Map + Side Intelligence Panel -->
+        <div class="dashboard-grid">
+
+            <!-- Interactive Live Map -->
+            <div class="map-card glass-panel">
+                <div class="map-header">
+                    <div class="map-title">
+                        <span>🗺️</span>
+                        <span>Maritime Intelligence Map</span>
+                    </div>
+                    <div class="map-layer-toggles">
+                        <button class="layer-btn active" data-layer="satellite" onclick="toggleMapLayer('satellite')">🛰 Satellite</button>
+                        <button class="layer-btn active" data-layer="spills" onclick="toggleMapLayer('spills')">🛢 Oil Spills</button>
+                        <button class="layer-btn active" data-layer="vessels" onclick="toggleMapLayer('vessels')">🚢 AIS Vessels</button>
+                        <button class="layer-btn active" data-layer="ports" onclick="toggleMapLayer('ports')">⚓ Ports</button>
+                        <button class="layer-btn active" data-layer="drift" onclick="toggleMapLayer('drift')">🌊 Oil Drift</button>
+                    </div>
+                </div>
+                <div id="intelligence-map"></div>
+            </div>
+
+            <!-- Side Intelligence Panel: Spill Details & Vessel Correlation -->
+            <div class="side-card">
+                <div class="glass-panel" style="display:flex; flex-direction:column; height:600px; overflow:hidden;">
+                    <div class="panel-header">
+                        <div class="panel-title">
+                            <span>🎯</span>
+                            <span id="inspector-title">Vessel Risk Correlation</span>
+                        </div>
+                        <span id="selected-spill-pill" class="brand-tag">Select a Spill</span>
+                    </div>
+
+                    <div style="padding: 0.9rem 1.2rem; border-bottom: 1px solid var(--border-subtle); font-size:0.8rem; color:var(--text-muted); background:rgba(0,0,0,0.2);">
+                        Click any <strong style="color:#f87171;">🛢️ oil spill</strong> on the map or table to correlate nearby candidate vessels.
+                    </div>
+
+                    <div class="table-responsive" style="flex:1; overflow-y:auto;">
+                        <table class="intel-table" id="ranking-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Vessel</th>
+                                    <th>Dist</th>
+                                    <th>Time &Delta;</th>
+                                    <th>Match</th>
+                                    <th>Score</th>
+                                </tr>
+                            </thead>
+                            <tbody id="ranking-tbody">
+                                <tr>
+                                    <td colspan="6" style="text-align:center; padding:3rem 1rem; color:var(--text-subtle);">
+                                        No spill selected. Click a detected slick on the map or in the table below.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Mandatory Legal Disclaimer -->
+                    <div style="padding:0.9rem 1.2rem; border-top:1px solid var(--border-subtle); background:rgba(0,0,0,0.3);">
+                        <div class="disclaimer-banner">
+                            <span style="font-size:1rem;">⚠️</span>
+                            <div>
+                                <strong>Analytical Correlation Only:</strong>
+                                Scores are computed from spatio-temporal proximity and course alignment. They represent analytical risk indicators, NOT definitive proof of maritime liability.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Container: Tables for AIS Vessels, Oil Spills, Satellite Data, Historical Filter -->
+        <div class="glass-panel" style="overflow:hidden;">
+            <div class="tabs-header">
+                <button class="tab-btn active" onclick="switchTab('tab-vessels')">
+                    <span>🚢</span>
+                    <span>Live AIS Data (<span id="count-tab-vessels">0</span>)</span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('tab-spills')">
+                    <span>🛢️</span>
+                    <span>Oil Spill Detections (<span id="count-tab-spills">0</span>)</span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('tab-satellite')">
+                    <span>🛰️</span>
+                    <span>Sentinel-1 Observations</span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('tab-audit')">
+                    <span>🕒</span>
+                    <span>Scan Audit History (<span id="count-tab-audit">0</span>)</span>
+                </button>
+                <button class="tab-btn" onclick="switchTab('tab-history')">
+                    <span>📅</span>
+                    <span>Historical Filter</span>
+                </button>
+            </div>
+
+            <!-- Tab 1: Live AIS Vessels -->
+            <div id="tab-vessels" class="tab-content active">
+                <div class="filter-toolbar" style="margin:-1.25rem -1.4rem 1.2rem -1.4rem;">
+                    <div class="search-box">
+                        <input type="text" id="vessel-search-input" class="search-input"
+                            placeholder="Search vessel by name or MMSI..." oninput="handleVesselSearch(this.value)" />
+                    </div>
+                    <select id="vessel-type-select" class="filter-select" onchange="handleVesselTypeFilter(this.value)">
+                        <option value="All">All Vessel Types</option>
+                        <option value="Tanker">Tankers</option>
+                        <option value="Cargo">Cargo Ships</option>
+                        <option value="Tug">Tug & Service</option>
+                        <option value="Fishing">Fishing Vessels</option>
+                    </select>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="intel-table">
+                        <thead>
+                            <tr>
+                                <th>Vessel Name</th>
+                                <th>MMSI</th>
+                                <th>Type</th>
+                                <th>Position</th>
+                                <th>Speed</th>
+                                <th>Course</th>
+                                <th>Destination</th>
+                                <th>Source</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="vessels-tbody">
+                            <tr>
+                                <td colspan="9" style="text-align:center; padding:2rem; color:var(--text-subtle);">Loading AIS data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 2: Detected Oil Spills -->
+            <div id="tab-spills" class="tab-content">
+                <div class="table-responsive">
+                    <table class="intel-table">
+                        <thead>
+                            <tr>
+                                <th>Spill ID</th>
+                                <th>Location</th>
+                                <th>Area (km²)</th>
+                                <th>Confidence</th>
+                                <th>Detection Time</th>
+                                <th>Satellite</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="spills-tbody">
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-subtle);">Loading detected spills...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 3: Sentinel-1 Satellite Data -->
+            <div id="tab-satellite" class="tab-content">
+                <div class="table-responsive">
+                    <table class="intel-table">
+                        <thead>
+                            <tr>
+                                <th>Scene ID</th>
+                                <th>Platform</th>
+                                <th>Acquisition (UTC)</th>
+                                <th>Center Coordinates</th>
+                                <th>Orbit</th>
+                                <th>Polarization</th>
+                                <th>Processing</th>
+                                <th>Oil Flag</th>
+                            </tr>
+                        </thead>
+                        <tbody id="satellite-tbody">
+                            <tr>
+                                <td colspan="8" style="text-align:center; padding:2rem; color:var(--text-subtle);">Loading Sentinel-1 scenes...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 4: Scan Audit History -->
+            <div id="tab-audit" class="tab-content">
+                <div class="filter-toolbar" style="margin:-1.25rem -1.4rem 1.2rem -1.4rem; justify-content:space-between;">
+                    <div style="display:flex; align-items:center; gap:0.8rem; flex-wrap:wrap; flex:1;">
+                        <div class="search-box" style="max-width:280px;">
+                            <input type="text" id="audit-search-input" class="search-input"
+                                placeholder="Search scans by filename..." oninput="handleAuditSearch(this.value)" />
+                        </div>
+                        <select id="audit-filter-select" class="filter-select" onchange="handleAuditFilter(this.value)">
+                            <option value="All">All Inferences</option>
+                            <option value="oil">Oil Spills Only</option>
+                            <option value="clean">Clean Waters Only</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-refresh" onclick="exportAuditJSON()" title="Export JSON">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                <polyline points="7 10 12 15 17 10"></polyline>
+                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                            </svg>
+                            <span>Export JSON</span>
+                        </button>
+                        <button class="btn-refresh" onclick="clearAuditHistory()" style="color:#f87171;" title="Clear History">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                            <span>Clear</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="intel-table">
+                        <thead>
+                            <tr>
+                                <th style="width:50px;">TILE</th>
+                                <th>FILENAME</th>
+                                <th>RESULT</th>
+                                <th>CONFIDENCE</th>
+                                <th>RAW PROB</th>
+                                <th>TIMESTAMP</th>
+                                <th>SOURCE</th>
+                            </tr>
+                        </thead>
+                        <tbody id="audit-history-tbody">
+                            <tr>
+                                <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-subtle);">
+                                    Loading scan audit history...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tab 5: Historical Data Filter -->
+            <div id="tab-history" class="tab-content">
+                <div class="filter-toolbar" style="margin:-1.25rem -1.4rem 1.2rem -1.4rem; border-bottom:1px solid var(--border-subtle);">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <label style="font-size:0.75rem; color:var(--text-muted);">From:</label>
+                        <input type="date" id="hist-date-from" class="search-input" style="width:150px;" value="2026-09-01" />
+                    </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <label style="font-size:0.75rem; color:var(--text-muted);">To:</label>
+                        <input type="date" id="hist-date-to" class="search-input" style="width:150px;" value="2026-09-20" />
+                    </div>
+                    <button class="btn-refresh" onclick="applyHistoricalFilter()" style="background:var(--cyan-neon); color:#000; font-weight:600;">
+                        Apply Filter
+                    </button>
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); line-height:1.6;">
+                    Select date parameters to query historical satellite acquisitions, AIS track logs, and oil spill detections. Results automatically update on the interactive map and data tables above.
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div>SpillWatch AI &bull; Smart India Hackathon Prototype &bull; Production Architecture</div>
+        <div>Sentinel-1 SAR + AIS Vessel Correlation System</div>
+    </footer>
+
+    <!-- Toast Notification -->
+    <div id="toast">
+        <span id="toast-icon">ℹ️</span>
+        <span id="toast-message">Notification message</span>
+    </div>
+
+    <!-- API Configuration Modal -->
+    <div class="modal-backdrop" id="config-modal">
+        <div class="glass-panel" style="background:#091322; border:1px solid var(--border-focus); border-radius:14px; padding:1.5rem; max-width:480px; width:90%; box-shadow:0 20px 50px rgba(0,0,0,0.85);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <div style="font-family:var(--font-tech); font-weight:700; font-size:1.1rem; color:white;">Backend API Configuration</div>
+                <button onclick="toggleConfigModal(false)" style="background:none; border:none; color:var(--text-muted); font-size:1.4rem; cursor:pointer;">&times;</button>
+            </div>
+            <div>
+                <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:0.4rem;">API Base URL</label>
+                <input type="text" id="api-url-input" class="search-input" value="" placeholder="http://localhost:8000 or https://YOUR-APP.onrender.com" style="margin-bottom:0.6rem; width:100%;" />
+                <div style="font-size:0.75rem; color:var(--text-subtle); line-height:1.6;">
+                    <div>Active URL: <code id="api-configured-url" style="color:var(--cyan-neon);">--</code></div>
+                    <div style="margin-top:0.35rem;">
+                        &bull; <strong>Local Server:</strong> <code>http://localhost:8000</code><br/>
+                        &bull; <strong>Render Cloud:</strong> <code>https://sentinel1-sar-oil-spill-api.onrender.com</code>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:0.6rem; margin-top:1.2rem;">
+                <button onclick="toggleConfigModal(false)" style="background:rgba(255,255,255,0.08); border:1px solid var(--border-subtle); color:white; padding:0.4rem 0.8rem; border-radius:6px; cursor:pointer;">Cancel</button>
+                <button onclick="saveApiConfig()" style="background:linear-gradient(135deg,#0284c7,#2563eb); border:none; color:white; padding:0.4rem 0.9rem; border-radius:6px; font-weight:600; cursor:pointer;">Save & Test</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="config/api.js"></script>
+
+    <script>
+        // State Store
+        let map = null;
+        let mapLayers = {
+            satellite: L.layerGroup(),
+            spills: L.layerGroup(),
+            vessels: L.layerGroup(),
+            ports: L.layerGroup(),
+            drift: L.layerGroup()
+        };
+        let activeLayerVis = { satellite: true, spills: true, vessels: true, ports: true, drift: true };
+        let vesselsData = [];
+        let spillsData = [];
+        let satelliteData = [];
+        let auditHistoryData = [];
+        let selectedSpillId = null;
+        let countdownSec = 30;
+        let countdownInterval = null;
+
+        // Ports Dataset (Key Arabian Sea / Indian Ocean hubs)
+        const MAJOR_PORTS = [
+            { name: "Cochin Port", lat: 9.965, lon: 76.270, country: "India" },
+            { name: "Mumbai Port", lat: 18.940, lon: 72.855, country: "India" },
+            { name: "Mangalore Port", lat: 12.920, lon: 74.815, country: "India" },
+            { name: "Colombo Port", lat: 6.945, lon: 79.845, country: "Sri Lanka" }
+        ];
+
+        // Init App
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            fetchDashboardData();
+            startCountdown();
+        });
+
+        // ── Map Initialization ─────────────────────────────────────────────
+        function initMap() {
+            // Centered on South Arabian Sea / Cochin shipping channel
+            map = L.map('intelligence-map', {
+                zoomControl: true,
+                attributionControl: false
+            }).setView([10.05, 75.95], 8);
+
+            // Dark Basemap Tiles (CartoDB Dark Matter)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                maxZoom: 18,
+                subdomains: 'abcd'
+            }).addTo(map);
+
+            // Add layer groups to map
+            Object.values(mapLayers).forEach(group => group.addTo(map));
+
+            // Render static port markers
+            renderPorts();
+        }
+
+        function renderPorts() {
+            mapLayers.ports.clearLayers();
+            MAJOR_PORTS.forEach(port => {
+                const marker = L.circleMarker([port.lat, port.lon], {
+                    radius: 6,
+                    fillColor: '#38bdf8',
+                    color: '#ffffff',
+                    weight: 1.5,
+                    opacity: 0.9,
+                    fillOpacity: 0.8
+                });
+                marker.bindPopup(`
+                    <div style="font-family:var(--font-body); font-size:0.8rem; color:#0f172a;">
+                        <strong>⚓ ${port.name}</strong><br/>
+                        ${port.country}<br/>
+                        <span style="font-family:var(--font-code); font-size:0.75rem;">${port.lat.toFixed(3)}, ${port.lon.toFixed(3)}</span>
+                    </div>
+                `);
+                mapLayers.ports.addLayer(marker);
+            });
+        }
+
+        // Toggle Layer Visibility
+        function toggleMapLayer(layerKey) {
+            const btn = document.querySelector(`.layer-btn[data-layer="${layerKey}"]`);
+            if (activeLayerVis[layerKey]) {
+                map.removeLayer(mapLayers[layerKey]);
+                activeLayerVis[layerKey] = false;
+                if (btn) btn.classList.remove('active');
+            } else {
+                map.addLayer(mapLayers[layerKey]);
+                activeLayerVis[layerKey] = true;
+                if (btn) btn.classList.add('active');
+            }
+        }
+
+        // ── Fetch All Dashboard Data ───────────────────────────────────────
+        async function fetchDashboardData() {
+            const refreshBtn = document.getElementById('refresh-btn');
+            if (refreshBtn) refreshBtn.classList.add('spinning');
+
+            try {
+                // 1. Health Probe
+                const health = await SentinelAPI.checkHealth(6000);
+                updateSystemStatus(health);
+
+                // 2. Fetch In Parallel (Summary, Live AIS, Detected Spills, Sat Observations, Scan Audit History)
+                const [summaryRes, aisRes, spillsRes, satRes, historyRes] = await Promise.all([
+                    SentinelAPI.fetchDashboardSummary().catch(() => null),
+                    SentinelAPI.fetchLiveAIS('All', '', 100).catch(() => null),
+                    SentinelAPI.fetchOilSpills('All', 50).catch(() => null),
+                    SentinelAPI.fetchSatelliteLatest(20).catch(() => null),
+                    SentinelAPI.fetchRecentHistory(100).catch(() => null)
+                ]);
+
+                // Update Metrics
+                if (summaryRes && summaryRes.statistics) {
+                    const stats = summaryRes.statistics;
+                    document.getElementById('val-total-vessels').textContent = stats.total_vessels_tracked || 0;
+                    document.getElementById('val-oil-spills').textContent = stats.detected_oil_spills || 0;
+                    document.getElementById('val-tankers-active').textContent = stats.tankers_active || 0;
+                    document.getElementById('val-sat-scenes').textContent = stats.satellite_passes_indexed || 0;
+                }
+
+                // Update AIS Vessels
+                if (aisRes && aisRes.vessels) {
+                    vesselsData = aisRes.vessels;
+                    document.getElementById('count-tab-vessels').textContent = vesselsData.length;
+                    renderVesselsTable(vesselsData);
+                    renderVesselsOnMap(vesselsData);
+                }
+
+                // Update Oil Spills
+                if (spillsRes && spillsRes.spills) {
+                    spillsData = spillsRes.spills;
+                    document.getElementById('count-tab-spills').textContent = spillsData.length;
+                    renderSpillsTable(spillsData);
+                    renderSpillsOnMap(spillsData);
+
+                    // Auto-select first spill if none selected
+                    if (!selectedSpillId && spillsData.length > 0) {
+                        selectOilSpill(spillsData[0].spill_id);
+                    }
+                }
+
+                // Update Satellite Scenes
+                if (satRes && satRes.observations) {
+                    satelliteData = satRes.observations;
+                    renderSatelliteTable(satelliteData);
+                    renderSatelliteOnMap(satelliteData);
+                }
+
+                // Update Scan Audit History
+                syncScanAuditHistory(historyRes && historyRes.records ? historyRes.records : null);
+
+                // Update Timestamp
+                const now = new Date();
+                document.getElementById('last-updated-time').textContent = now.toTimeString().split(' ')[0];
+                document.getElementById('offline-alert').style.display = 'none';
+
+            } catch (err) {
+                console.warn('[Dashboard] Data fetch error:', err);
+                document.getElementById('offline-alert').style.display = 'flex';
+                const dot = document.getElementById('api-status-dot');
+                const text = document.getElementById('api-status-text');
+                if (dot) dot.className = 'status-dot offline';
+                if (text) text.textContent = 'Backend Offline';
+            } finally {
+                if (refreshBtn) refreshBtn.classList.remove('spinning');
+                countdownSec = 30;
+            }
+        }
+
+        function updateSystemStatus(health) {
+            const dot = document.getElementById('api-status-dot');
+            const text = document.getElementById('api-status-text');
+            const pill = document.getElementById('api-status-pill');
+            const alertBanner = document.getElementById('offline-alert');
+
+            if (health.online) {
+                if (alertBanner) alertBanner.style.display = 'none';
+                dot.className = 'status-dot online';
+                text.textContent = `🟢 ONLINE (${health.latencyMs}ms)`;
+                pill.title = `Backend Connected: ${SentinelAPI.getBaseUrl()}`;
+
+                if (health.data_sources) {
+                    document.getElementById('badge-ais-source').textContent = health.data_sources.ais || 'LIVE';
+                    document.getElementById('badge-sat-source').textContent = health.data_sources.satellite || 'SENTINEL-1';
+                }
+            } else {
+                if (alertBanner) alertBanner.style.display = 'flex';
+                dot.className = 'status-dot offline';
+                text.textContent = '🔴 OFFLINE';
+                pill.title = 'Backend currently unavailable';
+            }
+        }
+
+        // ── Render Map Layers ──────────────────────────────────────────────
+        function renderVesselsOnMap(vessels) {
+            mapLayers.vessels.clearLayers();
+
+            vessels.forEach(v => {
+                const isTanker = (v.vessel_type || '').toLowerCase().includes('tanker');
+                const isCargo = (v.vessel_type || '').toLowerCase().includes('cargo');
+                const color = isTanker ? '#f59e0b' : (isCargo ? '#38bdf8' : '#10b981');
+
+                const marker = L.circleMarker([v.latitude, v.longitude], {
+                    radius: 7,
+                    fillColor: color,
+                    color: '#ffffff',
+                    weight: 1.5,
+                    opacity: 0.95,
+                    fillOpacity: 0.85
+                });
+
+                marker.bindPopup(`
+                    <div style="font-family:var(--font-body); font-size:0.82rem; color:#0f172a; min-width:180px;">
+                        <div style="font-weight:700; font-size:0.9rem; color:#0284c7;">🚢 ${escapeHtml(v.vessel_name)}</div>
+                        <div style="font-family:var(--font-code); font-size:0.75rem; color:#64748b;">MMSI: ${v.mmsi}</div>
+                        <hr style="margin:0.4rem 0; border:0; border-top:1px solid #e2e8f0;"/>
+                        <div><strong>Type:</strong> ${escapeHtml(v.vessel_type || 'Unknown')}</div>
+                        <div><strong>Speed:</strong> ${v.speed} kts &bull; <strong>Course:</strong> ${v.course}&deg;</div>
+                        <div><strong>Destination:</strong> ${escapeHtml(v.destination || 'Unreported')}</div>
+                        <div style="margin-top:0.4rem; font-size:0.72rem; color:#64748b;">Source: ${v.source}</div>
+                    </div>
+                `);
+
+                marker.on('click', () => {
+                    showToast(`Selected vessel: ${v.vessel_name} (MMSI: ${v.mmsi})`, '🚢');
+                });
+
+                mapLayers.vessels.addLayer(marker);
+            });
+        }
+
+        function renderSpillsOnMap(spills) {
+            mapLayers.spills.clearLayers();
+            mapLayers.drift.clearLayers();
+
+            spills.forEach(s => {
+                // Slick centroid glowing marker
+                const marker = L.circleMarker([s.latitude, s.longitude], {
+                    radius: 12,
+                    fillColor: '#ef4444',
+                    color: '#fbbf24',
+                    weight: 2.5,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                marker.bindPopup(`
+                    <div style="font-family:var(--font-body); font-size:0.82rem; color:#0f172a; min-width:200px;">
+                        <div style="font-weight:700; font-size:0.95rem; color:#ef4444;">🚨 Spill: ${s.spill_id}</div>
+                        <div style="color:#64748b; font-size:0.75rem;">${escapeHtml(s.location_name || 'Maritime Zone')}</div>
+                        <hr style="margin:0.4rem 0; border:0; border-top:1px solid #e2e8f0;"/>
+                        <div><strong>Area:</strong> ${s.estimated_area_km2} km²</div>
+                        <div><strong>Confidence:</strong> ${(s.confidence * 100).toFixed(1)}%</div>
+                        <div><strong>Satellite:</strong> ${s.source_satellite}</div>
+                        <div><strong>Detected:</strong> ${s.detection_timestamp}</div>
+                        <button onclick="selectOilSpill('${s.spill_id}')" style="margin-top:0.6rem; width:100%; background:#ef4444; color:white; border:none; padding:0.4rem; border-radius:4px; font-weight:600; cursor:pointer;">
+                            🎯 Correlate Nearby Vessels
+                        </button>
+                    </div>
+                `);
+
+                marker.on('click', () => {
+                    selectOilSpill(s.spill_id);
+                });
+
+                mapLayers.spills.addLayer(marker);
+
+                // Render drift forecast vectors if available
+                if (s.drift_predictions && s.drift_predictions.length > 0) {
+                    const driftPoints = [[s.latitude, s.longitude]];
+                    s.drift_predictions.forEach(p => {
+                        driftPoints.push([p.predicted_lat, p.predicted_lon]);
+                        const driftMarker = L.circleMarker([p.predicted_lat, p.predicted_lon], {
+                            radius: 4,
+                            fillColor: '#00aaff',
+                            color: '#ffffff',
+                            weight: 1,
+                            fillOpacity: 0.7
+                        });
+                        driftMarker.bindPopup(`<strong>Drift T+${p.hours_ahead}h</strong><br/>Heading: ${p.drift_heading_deg}&deg;`);
+                        mapLayers.drift.addLayer(driftMarker);
+                    });
+
+                    const polyline = L.polyline(driftPoints, {
+                        color: '#00aaff',
+                        weight: 2,
+                        dashArray: '5, 8',
+                        opacity: 0.75
+                    });
+                    mapLayers.drift.addLayer(polyline);
+                }
+            });
+        }
+
+        function renderSatelliteOnMap(observations) {
+            mapLayers.satellite.clearLayers();
+
+            observations.forEach(obs => {
+                if (!obs.bounding_box) return;
+                const b = obs.bounding_box;
+                const bounds = [[b.min_lat, b.min_lon], [b.max_lat, b.max_lon]];
+
+                const rect = L.rectangle(bounds, {
+                    color: '#818cf8',
+                    weight: 1.5,
+                    dashArray: '6, 6',
+                    fillColor: '#818cf8',
+                    fillOpacity: 0.04
+                });
+
+                rect.bindPopup(`
+                    <div style="font-family:var(--font-body); font-size:0.8rem; color:#0f172a;">
+                        <strong>🛰️ ${obs.satellite_name} SAR</strong><br/>
+                        <div style="font-family:var(--font-code); font-size:0.72rem; color:#64748b;">${obs.scene_id}</div>
+                        <div><strong>Acquisition:</strong> ${obs.acquisition_time}</div>
+                        <div><strong>Polarization:</strong> ${obs.polarization}</div>
+                        <div><strong>Status:</strong> ${obs.processing_status}</div>
+                    </div>
+                `);
+
+                mapLayers.satellite.addLayer(rect);
+            });
+        }
+
+        // ── Vessel Correlation Action ──────────────────────────────────────
+        async function selectOilSpill(spillId) {
+            selectedSpillId = spillId;
+            document.getElementById('selected-spill-pill').textContent = spillId;
+            document.getElementById('inspector-title').textContent = `Correlation: ${spillId}`;
+
+            const tbody = document.getElementById('ranking-tbody');
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-subtle);">Calculating vessel trajectories & proximity scores...</td></tr>`;
+
+            try {
+                const res = await SentinelAPI.fetchVesselRanking(spillId);
+                const ranked = res.ranked_vessels || [];
+
+                if (ranked.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-subtle);">No vessels within correlation boundary.</td></tr>`;
+                    return;
+                }
+
+                tbody.innerHTML = ranked.map(item => {
+                    const rankClass = item.rank === 1 ? 'rank-1' : (item.rank === 2 ? 'rank-2' : 'rank-3');
+                    const riskClass = item.risk_level === 'High' ? 'risk-high' : (item.risk_level === 'Medium' ? 'risk-medium' : 'risk-low');
+
+                    return `
+                        <tr>
+                            <td><span class="rank-badge ${rankClass}">${item.rank}</span></td>
+                            <td>
+                                <strong>${escapeHtml(item.vessel_name)}</strong><br/>
+                                <span style="font-family:var(--font-code); font-size:0.72rem; color:var(--text-muted);">${item.mmsi}</span>
+                            </td>
+                            <td>${item.distance_km} km</td>
+                            <td>${item.time_difference_hours} hrs</td>
+                            <td>${(item.trajectory_match * 100).toFixed(0)}%</td>
+                            <td>
+                                <span class="risk-pill ${riskClass}">${(item.overall_score * 100).toFixed(1)}%</span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+
+                showToast(`Ranked ${ranked.length} candidate vessels for spill ${spillId}`, '🎯');
+
+            } catch (err) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:#f87171;">Error correlating vessels: ${err.message}</td></tr>`;
+            }
+        }
+
+        // ── Render Tables ──────────────────────────────────────────────────
+        function renderVesselsTable(vessels) {
+            const tbody = document.getElementById('vessels-tbody');
+            if (vessels.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; padding:2rem; color:var(--text-subtle);">No vessels match query.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = vessels.map(v => {
+                const isTanker = (v.vessel_type || '').toLowerCase().includes('tanker');
+                const typeStyle = isTanker ? 'color:#f59e0b; font-weight:600;' : '';
+
+                return `
+                    <tr>
+                        <td><strong>${escapeHtml(v.vessel_name)}</strong></td>
+                        <td style="font-family:var(--font-code); font-size:0.75rem;">${v.mmsi}</td>
+                        <td style="${typeStyle}">${escapeHtml(v.vessel_type || 'Unknown')}</td>
+                        <td style="font-family:var(--font-code); font-size:0.75rem;">${v.latitude.toFixed(3)}, ${v.longitude.toFixed(3)}</td>
+                        <td>${v.speed} kts</td>
+                        <td>${v.course}&deg;</td>
+                        <td>${escapeHtml(v.destination || '--')}</td>
+                        <td><span class="source-badge ${v.source === 'LIVE' ? 'tag-live' : 'tag-historical'}">${v.source}</span></td>
+                        <td>
+                            <button onclick="focusMap([${v.latitude}, ${v.longitude}], 10)" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-subtle); color:var(--cyan-neon); padding:0.25rem 0.6rem; border-radius:4px; font-size:0.72rem; cursor:pointer;">
+                                View
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSpillsTable(spills) {
+            const tbody = document.getElementById('spills-tbody');
+            if (spills.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-subtle);">No detected oil spills recorded.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = spills.map(s => {
+                return `
+                    <tr>
+                        <td style="font-family:var(--font-code); font-weight:700; color:#f87171;">${s.spill_id}</td>
+                        <td>${escapeHtml(s.location_name || 'Coastal Sea')}</td>
+                        <td><strong>${s.estimated_area_km2} km²</strong></td>
+                        <td>${(s.confidence * 100).toFixed(1)}%</td>
+                        <td>${s.detection_timestamp}</td>
+                        <td>${s.source_satellite}</td>
+                        <td><span class="risk-pill risk-high">${s.status}</span></td>
+                        <td>
+                            <button onclick="selectOilSpill('${s.spill_id}'); focusMap([${s.latitude}, ${s.longitude}], 10);" style="background:rgba(239,68,68,0.2); border:1px solid rgba(239,68,68,0.4); color:#fca5a5; padding:0.25rem 0.65rem; border-radius:4px; font-size:0.72rem; font-weight:600; cursor:pointer;">
+                                Correlate
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderSatelliteTable(observations) {
+            const tbody = document.getElementById('satellite-tbody');
+            if (observations.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding:2rem; color:var(--text-subtle);">No satellite observations available.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = observations.map(obs => {
+                return `
+                    <tr>
+                        <td style="font-family:var(--font-code); font-size:0.72rem;">${obs.scene_id}</td>
+                        <td><strong>${obs.satellite_name}</strong></td>
+                        <td>${obs.acquisition_time}</td>
+                        <td style="font-family:var(--font-code); font-size:0.75rem;">${obs.latitude.toFixed(3)}, ${obs.longitude.toFixed(3)}</td>
+                        <td>${obs.orbit_direction} (${obs.orbit_number || '--'})</td>
+                        <td>${obs.polarization}</td>
+                        <td><span class="source-badge tag-live">${obs.processing_status}</span></td>
+                        <td>
+                            <span style="color:${obs.oil_detected ? '#f87171' : '#34d399'}; font-weight:600;">
+                                ${obs.oil_detected ? '🚨 OIL DETECTED' : 'CLEAN'}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ── Search & Filter Handlers ───────────────────────────────────────
+        function handleVesselSearch(term) {
+            const type = document.getElementById('vessel-type-select').value;
+            applyVesselFilters(term, type);
+        }
+
+        function handleVesselTypeFilter(type) {
+            const term = document.getElementById('vessel-search-input').value;
+            applyVesselFilters(term, type);
+        }
+
+        function applyVesselFilters(term, type) {
+            const cleanTerm = (term || '').toLowerCase().trim();
+            const filtered = vesselsData.filter(v => {
+                const matchSearch = !cleanTerm ||
+                    v.vessel_name.toLowerCase().includes(cleanTerm) ||
+                    v.mmsi.includes(cleanTerm);
+                const matchType = !type || type === 'All' ||
+                    (v.vessel_type || '').toLowerCase().includes(type.toLowerCase());
+                return matchSearch && matchType;
+            });
+            renderVesselsTable(filtered);
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+            const targetBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick').includes(tabId));
+            if (targetBtn) targetBtn.classList.add('active');
+
+            const content = document.getElementById(tabId);
+            if (content) content.classList.add('active');
+        }
+
+        // Map Pan Helper
+        function focusMap(latLng, zoom) {
+            if (map) {
+                map.flyTo(latLng, zoom || 10, { duration: 1.2 });
+            }
+        }
+
+        // Apply Historical Filter
+        async function applyHistoricalFilter() {
+            const from = document.getElementById('hist-date-from').value;
+            const to = document.getElementById('hist-date-to').value;
+            showToast(`Filtering observations from ${from} to ${to}...`, '⏳');
+            try {
+                const satRes = await SentinelAPI.fetchSatelliteHistory(from, to, 50);
+                if (satRes && satRes.observations) {
+                    renderSatelliteTable(satRes.observations);
+                    renderSatelliteOnMap(satRes.observations);
+                    showToast(`Found ${satRes.observations.length} historical observations.`, '✅');
+                }
+            } catch (err) {
+                showToast(`Filter failed: ${err.message}`, '⚠️');
+            }
+        }
+
+        // ── Scan Audit History Synchronization & Rendering ────────────────
+        function syncScanAuditHistory(remoteRecords) {
+            let localList = [];
+            try {
+                const stored = localStorage.getItem('sih_sar_history');
+                if (stored) {
+                    localList = JSON.parse(stored);
+                    if (!Array.isArray(localList)) localList = [];
+                }
+            } catch (e) {
+                localList = [];
+            }
+
+            const itemMap = new Map();
+
+            // 1. Ingest local browser session scans
+            localList.forEach(item => {
+                const key = (item.filename || 'tile') + '|' + (item.timestamp || '');
+                itemMap.set(key, { ...item, source: item.source || 'LOCAL' });
+            });
+
+            // 2. Ingest remote cloud database prediction records
+            if (remoteRecords && Array.isArray(remoteRecords)) {
+                remoteRecords.forEach(rec => {
+                    const ts = rec.timestamp || rec.created_at || '';
+                    const timeOnly = ts.includes(' ') ? ts.split(' ')[1] : ts;
+
+                    let matchedKey = null;
+                    for (const [k, v] of itemMap.entries()) {
+                        if (v.filename === rec.filename && (k.includes(timeOnly) || !v.id)) {
+                            matchedKey = k;
+                            break;
+                        }
+                    }
+
+                    if (matchedKey) {
+                        const existing = itemMap.get(matchedKey);
+                        itemMap.set(matchedKey, {
+                            ...existing,
+                            id: rec.id,
+                            raw_score: rec.raw_score !== undefined ? rec.raw_score : existing.raw_score,
+                            confidence: rec.confidence !== undefined ? rec.confidence : existing.confidence,
+                            source: 'DATABASE'
+                        });
+                    } else {
+                        const newKey = (rec.filename || 'tile') + '|' + ts;
+                        itemMap.set(newKey, {
+                            id: rec.id,
+                            filename: rec.filename,
+                            oil_detected: !!rec.oil_detected,
+                            inconclusive: rec.classification === 'INCONCLUSIVE',
+                            result_label: rec.classification || (rec.oil_detected ? 'OIL SPILL' : 'CLEAN'),
+                            confidence: rec.confidence,
+                            raw_score: rec.raw_score !== undefined ? rec.raw_score : rec.raw_probability,
+                            model: rec.model || 'PyTorch ResNet',
+                            timestamp: timeOnly || ts || new Date().toLocaleTimeString(),
+                            thumbSrc: rec.thumbSrc || '',
+                            source: 'DATABASE'
+                        });
+                    }
+                });
+            }
+
+            auditHistoryData = Array.from(itemMap.values());
+
+            // Sort most recent first
+            auditHistoryData.sort((a, b) => {
+                if (a.id && b.id) return b.id - a.id;
+                return String(b.timestamp || '').localeCompare(String(a.timestamp || ''));
+            });
+
+            // Persist merged cache to localStorage
+            try {
+                localStorage.setItem('sih_sar_history', JSON.stringify(auditHistoryData.slice(0, 100)));
+            } catch (e) {}
+
+            // Update tab count badge
+            const countTab = document.getElementById('count-tab-audit');
+            if (countTab) countTab.textContent = auditHistoryData.length;
+
+            // Update top metric card if present
+            const valMetric = document.getElementById('val-audit-scans');
+            if (valMetric) valMetric.textContent = auditHistoryData.length;
+
+            renderAuditTable(auditHistoryData);
+        }
+
+        function renderAuditTable(items) {
+            const tbody = document.getElementById('audit-history-tbody');
+            if (!tbody) return;
+
+            if (!items || items.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align:center; padding:2rem; color:var(--text-subtle);">
+                            No historical scans in current session. Run a tile classification on the AI Scanner to see records here.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = items.map(item => {
+                const isOil = !!item.oil_detected;
+                const isInconclusive = item.inconclusive || item.result_label === 'INCONCLUSIVE';
+
+                let badgeClass = 'clean';
+                let badgeLabel = 'CLEAN';
+                if (isOil) {
+                    badgeClass = 'oil';
+                    badgeLabel = 'OIL SPILL';
+                } else if (isInconclusive) {
+                    badgeClass = 'inconclusive';
+                    badgeLabel = 'INCONCLUSIVE';
+                }
+
+                // Format Confidence
+                let confNum = Number(item.confidence) || 0;
+                if (confNum <= 1.0) confNum = confNum * 100;
+                const confPercent = confNum.toFixed(1);
+
+                // Format Raw Probability
+                const rawNum = Number(item.raw_score !== undefined ? item.raw_score : item.raw_probability || 0);
+                const rawStr = isNaN(rawNum) ? '0.0000' : rawNum.toFixed(4);
+
+                // Tile Thumbnail Preview
+                let tileHtml = '';
+                if (item.thumbSrc && item.thumbSrc.length > 5) {
+                    tileHtml = `<img src="${item.thumbSrc}" class="history-thumb" alt="tile" onerror="this.outerHTML='<div class=\\'history-thumb-placeholder\\'>${isOil ? '🛢️' : '🌊'}</div>'"/>`;
+                } else {
+                    tileHtml = `<div class="history-thumb-placeholder">${isOil ? '🛢️' : '🌊'}</div>`;
+                }
+
+                const sourceTag = item.source === 'DATABASE' || item.id
+                    ? '<span class="source-badge tag-live" style="font-size:0.65rem;">DATABASE</span>'
+                    : '<span class="source-badge tag-dataset" style="font-size:0.65rem;">LOCAL</span>';
+
+                return `
+                    <tr>
+                        <td style="text-align:center;">${tileHtml}</td>
+                        <td style="font-family:var(--font-code); color:var(--text-main); font-weight:600;">
+                            ${escapeHtml(item.filename || 'sar_patch.jpg')}
+                        </td>
+                        <td>
+                            <span class="badge-classified ${badgeClass}">
+                                ${badgeLabel}
+                            </span>
+                        </td>
+                        <td style="font-family:var(--font-code); font-weight:700; color:${isOil ? '#f87171' : '#34d399'};">
+                            ${confPercent}%
+                        </td>
+                        <td style="font-family:var(--font-code); color:var(--text-muted);">
+                            ${rawStr}
+                        </td>
+                        <td style="font-family:var(--font-code); font-size:0.75rem; color:var(--text-subtle);">
+                            ${escapeHtml(item.timestamp || item.created_at || '--')}
+                        </td>
+                        <td>${sourceTag}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function exportAuditJSON() {
+            if (!auditHistoryData || auditHistoryData.length === 0) {
+                showToast('No scan history records to export.', '⚠️');
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(auditHistoryData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `sentinel1_sar_scan_audit_${Date.now()}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast(`Exported ${auditHistoryData.length} records as JSON.`, '📥');
+        }
+
+        async function clearAuditHistory() {
+            if (!confirm('Are you sure you want to clear all scan audit history?')) return;
+            auditHistoryData = [];
+            try {
+                localStorage.removeItem('sih_sar_history');
+            } catch (e) {}
+
+            renderAuditTable([]);
+            const countTab = document.getElementById('count-tab-audit');
+            if (countTab) countTab.textContent = '0';
+            const valMetric = document.getElementById('val-audit-scans');
+            if (valMetric) valMetric.textContent = '0';
+
+            try {
+                if (SentinelAPI.isConfigured()) {
+                    await SentinelAPI.clearRemoteHistory();
+                }
+            } catch (err) {
+                console.warn('[Audit] Remote clear warning:', err);
+            }
+
+            showToast('Scan audit history cleared.', '🗑️');
+        }
+
+        function handleAuditSearch(term) {
+            const select = document.getElementById('audit-filter-select');
+            const filterType = select ? select.value : 'All';
+            applyAuditFilter(term, filterType);
+        }
+
+        function handleAuditFilter(filterType) {
+            const input = document.getElementById('audit-search-input');
+            const term = input ? input.value : '';
+            applyAuditFilter(term, filterType);
+        }
+
+        function applyAuditFilter(term, filterType) {
+            const cleanTerm = (term || '').toLowerCase().trim();
+            const filtered = auditHistoryData.filter(item => {
+                const matchFilename = !cleanTerm || (item.filename || '').toLowerCase().includes(cleanTerm);
+                let matchType = true;
+                if (filterType === 'oil') {
+                    matchType = !!item.oil_detected;
+                } else if (filterType === 'clean') {
+                    matchType = !item.oil_detected;
+                }
+                return matchFilename && matchType;
+            });
+            renderAuditTable(filtered);
+        }
+
+        // ── Auto-Refresh & Countdown ───────────────────────────────────────
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                countdownSec--;
+                if (countdownSec <= 0) {
+                    countdownSec = 30;
+                    fetchDashboardData();
+                }
+                const el = document.getElementById('countdown-sec');
+                if (el) el.textContent = countdownSec;
+            }, 1000);
+        }
+
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            fetchDashboardData();
+        });
+
+        // Toast Notification Helper
+        function showToast(msg, icon = 'ℹ️') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-icon').textContent = icon;
+            document.getElementById('toast-message').textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3200);
+        }
+
+        function toggleConfigModal(show) {
+            const modal = document.getElementById('config-modal');
+            if (!modal) return;
+            if (show) {
+                const currentUrl = SentinelAPI.getBaseUrl();
+                const input = document.getElementById('api-url-input');
+                const label = document.getElementById('api-configured-url');
+                if (input) input.value = currentUrl;
+                if (label) label.textContent = currentUrl;
+                modal.classList.add('open');
+            } else {
+                modal.classList.remove('open');
+            }
+        }
+
+        async function saveApiConfig() {
+            const input = document.getElementById('api-url-input');
+            const val = input ? input.value.trim() : '';
+            if (val) {
+                SentinelAPI.setBaseUrl(val);
+                showToast(`Configured API: ${val}`, '⚙️');
+                toggleConfigModal(false);
+                await fetchDashboardData();
+            }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+        }
+    </script>
+</body>
+
+</html>

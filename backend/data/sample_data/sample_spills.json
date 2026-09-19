@@ -1,0 +1,94 @@
+[
+  {
+    "spill_id": "OS-001",
+    "detection_timestamp": "2026-09-19T04:15:00Z",
+    "latitude": 9.985,
+    "longitude": 75.885,
+    "estimated_area_km2": 14.8,
+    "perimeter_km": 21.4,
+    "length_km": 7.2,
+    "width_km": 2.1,
+    "shape": "Elongated Slick with Feathering",
+    "confidence": 0.942,
+    "estimated_age_hours": 3.5,
+    "source_satellite": "Sentinel-1A",
+    "image_acquisition_time": "2026-09-19T03:28:40Z",
+    "status": "DETECTED",
+    "location_name": "Arabian Sea (Off Kochi Coast)",
+    "source": "DEMO/DATASET",
+    "environmental": {
+      "wind_speed_kts": 14.2,
+      "wind_direction_deg": 245.0,
+      "ocean_current_speed_kts": 1.1,
+      "ocean_current_direction_deg": 130.0,
+      "water_temperature_c": 28.5,
+      "sea_state": "Slight to Moderate (Beaufort 3)"
+    },
+    "drift_predictions": [
+      {
+        "hours_ahead": 6,
+        "predicted_lat": 10.040,
+        "predicted_lon": 75.940,
+        "wind_influence_kts": 0.43,
+        "current_influence_kts": 1.10,
+        "drift_heading_deg": 142.0,
+        "confidence_decay": 0.92
+      },
+      {
+        "hours_ahead": 12,
+        "predicted_lat": 10.095,
+        "predicted_lon": 75.995,
+        "wind_influence_kts": 0.43,
+        "current_influence_kts": 1.10,
+        "drift_heading_deg": 140.0,
+        "confidence_decay": 0.85
+      },
+      {
+        "hours_ahead": 24,
+        "predicted_lat": 10.200,
+        "predicted_lon": 76.105,
+        "wind_influence_kts": 0.43,
+        "current_influence_kts": 1.10,
+        "drift_heading_deg": 138.0,
+        "confidence_decay": 0.73
+      }
+    ]
+  },
+  {
+    "spill_id": "OS-002",
+    "detection_timestamp": "2026-09-16T05:00:00Z",
+    "latitude": 9.820,
+    "longitude": 76.080,
+    "estimated_area_km2": 6.5,
+    "perimeter_km": 11.8,
+    "length_km": 3.8,
+    "width_km": 1.7,
+    "shape": "Patchy Sheen",
+    "confidence": 0.885,
+    "estimated_age_hours": 6.0,
+    "source_satellite": "Sentinel-1B",
+    "image_acquisition_time": "2026-09-16T04:12:10Z",
+    "status": "MONITORING",
+    "location_name": "Arabian Sea (South Inbound Lane)",
+    "source": "HISTORICAL",
+    "environmental": {
+      "wind_speed_kts": 10.5,
+      "wind_direction_deg": 260.0,
+      "ocean_current_speed_kts": 0.9,
+      "ocean_current_direction_deg": 120.0,
+      "water_temperature_c": 29.0,
+      "sea_state": "Slight (Beaufort 2-3)"
+    },
+    "drift_predictions": [
+      {
+        "hours_ahead": 6,
+        "predicted_lat": 9.860,
+        "predicted_lon": 76.130,
+        "wind_influence_kts": 0.32,
+        "current_influence_kts": 0.90,
+        "drift_heading_deg": 132.0,
+        "confidence_decay": 0.90
+      }
+    ]
+  }
+]
