@@ -17,15 +17,15 @@
 
     <style>
         :root {
-            --bg-dark: #070B13;
-            --bg-card: rgba(15, 23, 42, 0.75);
-            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --bg-dark: #103660;
+            --bg-card: rgba(8, 15, 40, 0.80);
+            --bg-card-hover: rgba(15, 28, 70, 0.90);
             --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-focus: rgba(6, 182, 212, 0.5);
+            --border-focus: rgba(0, 100, 255, 0.55);
 
-            --cyan-neon: #00f2fe;
-            --cyan-glow: rgba(0, 242, 254, 0.25);
-            --blue-accent: #38bdf8;
+            --cyan-neon: #00aaff;
+            --cyan-glow: rgba(0, 150, 255, 0.30);
+            --blue-accent: #4db8ff;
             --purple-accent: #818cf8;
 
             --danger-red: #ef4444;
@@ -61,8 +61,8 @@
         body {
             background-color: var(--bg-dark);
             background-image:
-                radial-gradient(circle at 15% 15%, rgba(6, 182, 212, 0.07) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.07) 0%, transparent 45%),
+                radial-gradient(circle at 15% 15%, rgba(0, 100, 255, 0.10) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
                 linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
             background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
@@ -90,7 +90,7 @@
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(6, 182, 212, 0.6);
+            background: rgba(0, 150, 255, 0.65);
         }
 
         /* Glass Effect Utilities */
@@ -189,9 +189,9 @@
         }
 
         .brand-tag {
-            background: rgba(6, 182, 212, 0.15);
+            background: rgba(0, 100, 255, 0.15);
             color: var(--cyan-neon);
-            border: 1px solid rgba(6, 182, 212, 0.3);
+            border: 1px solid rgba(0, 100, 255, 0.3);
             padding: 0.1rem 0.45rem;
             border-radius: 4px;
             font-weight: 600;
@@ -261,6 +261,7 @@
             from {
                 transform: rotate(0deg);
             }
+
             to {
                 transform: rotate(360deg);
             }
@@ -412,7 +413,7 @@
 
         /* Dropzone */
         .dropzone {
-            border: 2px dashed rgba(6, 182, 212, 0.35);
+            border: 2px dashed rgba(0, 120, 255, 0.40);
             border-radius: var(--radius-md);
             padding: 2.2rem 1.5rem;
             text-align: center;
@@ -426,8 +427,8 @@
         .dropzone:hover,
         .dropzone.dragover {
             border-color: var(--cyan-neon);
-            background: rgba(6, 182, 212, 0.06);
-            box-shadow: 0 0 30px rgba(0, 242, 254, 0.15);
+            background: rgba(0, 100, 255, 0.07);
+            box-shadow: 0 0 30px rgba(0, 150, 255, 0.20);
             transform: translateY(-2px);
         }
 
@@ -445,8 +446,8 @@
             width: 60px;
             height: 60px;
             margin: 0 auto 1rem;
-            background: linear-gradient(135deg, rgba(6, 182, 212, 0.15), rgba(99, 102, 241, 0.15));
-            border: 1px solid rgba(6, 182, 212, 0.3);
+            background: linear-gradient(135deg, rgba(0, 100, 255, 0.15), rgba(99, 102, 241, 0.15));
+            border: 1px solid rgba(0, 100, 255, 0.3);
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -478,8 +479,8 @@
             font-family: var(--font-code);
             font-size: 0.72rem;
             color: var(--cyan-neon);
-            background: rgba(6, 182, 212, 0.08);
-            border: 1px solid rgba(6, 182, 212, 0.2);
+            background: rgba(0, 100, 255, 0.09);
+            border: 1px solid rgba(0, 100, 255, 0.22);
             padding: 0.2rem 0.6rem;
             border-radius: var(--radius-full);
         }
@@ -592,9 +593,9 @@
             inset: 0;
             pointer-events: none;
             background:
-                radial-gradient(circle at center, transparent 30%, rgba(6, 182, 212, 0.03) 70%, rgba(6, 182, 212, 0.1) 100%),
-                linear-gradient(rgba(0, 242, 254, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 242, 254, 0.05) 1px, transparent 1px);
+                radial-gradient(circle at center, transparent 30%, rgba(0, 100, 255, 0.04) 70%, rgba(0, 182, 212, 0.1) 100%),
+                linear-gradient(rgba(0, 150, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 150, 255, 0.05) 1px, transparent 1px);
             background-size: 100% 100%, 20px 20px, 20px 20px;
         }
 
@@ -605,7 +606,7 @@
             transform: translate(-50%, -50%);
             width: 60px;
             height: 60px;
-            border: 1px dashed rgba(0, 242, 254, 0.4);
+            border: 1px dashed rgba(0, 150, 255, 0.45);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -614,7 +615,7 @@
         .radar-crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(0, 242, 254, 0.6);
+            background: rgba(0, 150, 255, 0.65);
         }
 
         .radar-crosshair::before {
@@ -700,7 +701,7 @@
 
         .tool-btn:hover,
         .tool-btn.active {
-            background: rgba(6, 182, 212, 0.15);
+            background: rgba(0, 100, 255, 0.15);
             border-color: var(--cyan-neon);
             color: var(--cyan-neon);
         }
@@ -875,7 +876,7 @@
         }
 
         .fill-clean {
-            background: linear-gradient(90deg, #06b6d4, #10b981);
+            background: linear-gradient(90deg, #0055ff, #10b981);
             box-shadow: 0 0 10px #10b981;
         }
 
@@ -918,7 +919,7 @@
             padding: 0.9rem 1rem;
             border-radius: var(--radius-sm);
             border-left: 3px solid var(--cyan-neon);
-            background: rgba(6, 182, 212, 0.05);
+            background: rgba(0, 100, 255, 0.06);
             font-size: 0.82rem;
             line-height: 1.5;
         }
@@ -1509,10 +1510,12 @@
                 <input type="text" id="api-url-input" class="input-field" value=""
                     placeholder="https://YOUR-BACKEND-DOMAIN or http://localhost:8000" />
                 <div style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.6rem; line-height: 1.6;">
-                    <div><strong>Active Endpoint:</strong> <code id="api-configured-url" style="color: var(--cyan-neon);">--</code></div>
+                    <div><strong>Active Endpoint:</strong> <code id="api-configured-url"
+                            style="color: var(--cyan-neon);">--</code></div>
                     <div style="margin-top: 0.35rem;">
-                        &bull; <strong>Local Dev:</strong> <code>http://localhost:8000</code><br/>
-                        &bull; <strong>GitHub Pages / Cloud:</strong> Enter your deployed HTTPS backend URL (e.g. Render, Railway, Hugging Face).
+                        &bull; <strong>Local Dev:</strong> <code>http://localhost:8000</code><br />
+                        &bull; <strong>GitHub Pages / Cloud:</strong> Enter your deployed HTTPS backend URL (e.g.
+                        Render, Railway, Hugging Face).
                     </div>
                 </div>
             </div>
@@ -2110,7 +2113,7 @@
 
                 protocolBox.style.display = 'block';
                 protocolBox.className = 'action-protocol-box';
-                protocolTitle.innerHTML = `<span style="color:#06b6d4;">🌊 Standard Surveillance Status:</span>`;
+                protocolTitle.innerHTML = `<span style="color:#00aaff;">🌊 Standard Surveillance Status:</span>`;
                 protocolBody.innerHTML = `
           &bull; <strong>Routine Monitoring:</strong> Normal surface backscatter confirmed. No immediate threat identified.<br/>
           &bull; <strong>Archive:</strong> SAR patch telemetry stored in historical baseline database.
