@@ -17,28 +17,40 @@
 
     <style>
         :root {
-            --bg-dark: #103660;
-            --bg-card: rgba(8, 15, 40, 0.80);
-            --bg-card-hover: rgba(15, 28, 70, 0.90);
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --border-focus: rgba(0, 100, 255, 0.55);
+            /* Clean Light Blue/White SaaS Theme */
+            --bg-dark: #f0f4f9;
+            --bg-card: #ffffff;
+            --bg-card-hover: #f8faff;
+            --border-subtle: #e2e8f0;
+            --border-focus: #2563eb;
 
-            --cyan-neon: #00aaff;
-            --cyan-glow: rgba(0, 150, 255, 0.30);
-            --blue-accent: #4db8ff;
-            --purple-accent: #818cf8;
+            /* Deep Navy & Royal Blue Primary Elements */
+            --primary-navy: #0f2b5c;
+            --primary-royal: #1d4ed8;
+            --blue-accent: #2563eb;
+            --blue-medium: #3b82f6;
+            --blue-light: #60a5fa;
+            --blue-subtle: #eff6ff;
+            --blue-glow: rgba(37, 99, 235, 0.18);
+            --cyan-neon: #1d4ed8;
+            --cyan-glow: rgba(29, 78, 216, 0.22);
+            --purple-accent: #4f46e5;
 
+            /* Alerts & Classifications */
             --danger-red: #ef4444;
-            --danger-glow: rgba(239, 68, 68, 0.35);
-            --danger-bg: rgba(239, 68, 68, 0.12);
+            --danger-glow: rgba(239, 68, 68, 0.25);
+            --danger-bg: #fef2f2;
 
             --success-green: #10b981;
-            --success-glow: rgba(16, 185, 129, 0.35);
-            --success-bg: rgba(16, 185, 129, 0.12);
+            --success-glow: rgba(16, 185, 129, 0.25);
+            --success-bg: #ecfdf5;
 
             --warning-amber: #f59e0b;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
+            --warning-bg: #fffbeb;
+
+            /* High Contrast Typography */
+            --text-main: #0f172a;
+            --text-muted: #475569;
             --text-subtle: #64748b;
 
             --radius-sm: 8px;
@@ -61,10 +73,10 @@
         body {
             background-color: var(--bg-dark);
             background-image:
-                radial-gradient(circle at 15% 15%, rgba(0, 100, 255, 0.10) 0%, transparent 40%),
-                radial-gradient(circle at 85% 85%, rgba(99, 102, 241, 0.08) 0%, transparent 45%),
-                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+                radial-gradient(circle at 15% 15%, rgba(37, 99, 235, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 85% 85%, rgba(14, 165, 233, 0.04) 0%, transparent 45%),
+                linear-gradient(rgba(15, 43, 92, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 43, 92, 0.03) 1px, transparent 1px);
             background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
             color: var(--text-main);
             font-family: var(--font-body);
@@ -81,41 +93,43 @@
         }
 
         ::-webkit-scrollbar-track {
-            background: rgba(10, 15, 29, 0.6);
+            background: #f1f5f9;
         }
 
         ::-webkit-scrollbar-thumb {
-            background: rgba(100, 116, 139, 0.4);
+            background: #cbd5e1;
             border-radius: 4px;
         }
 
         ::-webkit-scrollbar-thumb:hover {
-            background: rgba(0, 150, 255, 0.65);
+            background: #3b82f6;
         }
 
-        /* Glass Effect Utilities */
+        /* Glass Effect / Clean SaaS Card Utilities */
         .glass-panel {
             background: var(--bg-card);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-md);
-            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 20px -2px rgba(15, 43, 92, 0.06), 0 2px 6px -1px rgba(15, 43, 92, 0.03);
             transition: border-color 0.25s, box-shadow 0.25s;
         }
 
         .glass-panel:hover {
-            border-color: rgba(255, 255, 255, 0.14);
+            border-color: #cbd5e1;
+            box-shadow: 0 8px 24px -2px rgba(15, 43, 92, 0.08), 0 4px 10px -1px rgba(15, 43, 92, 0.04);
         }
 
         /* Header */
         header {
             border-bottom: 1px solid var(--border-subtle);
-            background: rgba(7, 11, 19, 0.85);
+            background: rgba(255, 255, 255, 0.94);
             backdrop-filter: blur(12px);
             position: sticky;
             top: 0;
             z-index: 100;
+            box-shadow: 0 1px 4px rgba(15, 43, 92, 0.03);
         }
 
         .header-container {
@@ -137,12 +151,12 @@
             width: 44px;
             height: 44px;
             border-radius: 12px;
-            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            background: linear-gradient(135deg, #0f2b5c, #1d4ed8);
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            box-shadow: 0 0 20px var(--cyan-glow);
+            box-shadow: 0 4px 14px rgba(29, 78, 216, 0.35);
         }
 
         .radar-icon-badge::after {
@@ -151,7 +165,7 @@
             width: 100%;
             height: 100%;
             border-radius: 12px;
-            border: 1px solid var(--cyan-neon);
+            border: 1px solid #3b82f6;
             animation: radar-pulse 2.5s infinite;
             opacity: 0.6;
         }
@@ -173,7 +187,7 @@
             font-size: 1.25rem;
             font-weight: 700;
             letter-spacing: -0.02em;
-            background: linear-gradient(135deg, #ffffff 40%, var(--cyan-neon));
+            background: linear-gradient(135deg, #0f2b5c 40%, #1d4ed8);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -189,9 +203,9 @@
         }
 
         .brand-tag {
-            background: rgba(0, 100, 255, 0.15);
-            color: var(--cyan-neon);
-            border: 1px solid rgba(0, 100, 255, 0.3);
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
             padding: 0.1rem 0.45rem;
             border-radius: 4px;
             font-weight: 600;
@@ -213,14 +227,16 @@
             border-radius: var(--radius-full);
             font-size: 0.8rem;
             font-family: var(--font-code);
-            background: rgba(15, 23, 42, 0.9);
+            background: #f8fafc;
             border: 1px solid var(--border-subtle);
+            color: #1e293b;
             cursor: pointer;
             transition: all 0.2s;
         }
 
         .status-pill:hover {
-            border-color: var(--cyan-neon);
+            border-color: #2563eb;
+            background: #eff6ff;
         }
 
         .status-dot {
@@ -280,9 +296,9 @@
         }
 
         .btn-secondary {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-main);
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            color: #1e293b;
+            border: 1px solid #cbd5e1;
             padding: 0.45rem 0.9rem;
             border-radius: var(--radius-sm);
             font-size: 0.85rem;
@@ -295,8 +311,8 @@
         }
 
         .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
+            background: #f8fafc;
+            border-color: #94a3b8;
         }
 
         /* Main Container */
@@ -336,33 +352,34 @@
         }
 
         .metric-icon-blue {
-            background: rgba(56, 189, 248, 0.12);
-            color: #38bdf8;
-            border: 1px solid rgba(56, 189, 248, 0.25);
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
         }
 
         .metric-icon-red {
-            background: rgba(239, 68, 68, 0.12);
-            color: #ef4444;
-            border: 1px solid rgba(239, 68, 68, 0.25);
+            background: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
         }
 
         .metric-icon-green {
-            background: rgba(16, 185, 129, 0.12);
-            color: #10b981;
-            border: 1px solid rgba(16, 185, 129, 0.25);
+            background: #ecfdf5;
+            color: #059669;
+            border: 1px solid #a7f3d0;
         }
 
         .metric-icon-purple {
-            background: rgba(129, 140, 248, 0.12);
-            color: #818cf8;
-            border: 1px solid rgba(129, 140, 248, 0.25);
+            background: #eff6ff;
+            color: #2563eb;
+            border: 1px solid #bfdbfe;
         }
 
         .metric-data .val {
             font-size: 1.4rem;
             font-weight: 700;
             font-family: var(--font-tech);
+            color: #0f2b5c;
             line-height: 1.2;
         }
 
@@ -398,7 +415,7 @@
             font-family: var(--font-tech);
             font-size: 1rem;
             font-weight: 600;
-            color: var(--text-main);
+            color: #0f2b5c;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -413,11 +430,11 @@
 
         /* Dropzone */
         .dropzone {
-            border: 2px dashed rgba(0, 120, 255, 0.40);
+            border: 2px dashed #93c5fd;
             border-radius: var(--radius-md);
             padding: 2.2rem 1.5rem;
             text-align: center;
-            background: rgba(8, 14, 26, 0.6);
+            background: #f8faff;
             cursor: pointer;
             position: relative;
             overflow: hidden;
@@ -426,9 +443,9 @@
 
         .dropzone:hover,
         .dropzone.dragover {
-            border-color: var(--cyan-neon);
-            background: rgba(0, 100, 255, 0.07);
-            box-shadow: 0 0 30px rgba(0, 150, 255, 0.20);
+            border-color: #2563eb;
+            background: #eff6ff;
+            box-shadow: 0 0 25px rgba(37, 99, 235, 0.15);
             transform: translateY(-2px);
         }
 
@@ -446,13 +463,13 @@
             width: 60px;
             height: 60px;
             margin: 0 auto 1rem;
-            background: linear-gradient(135deg, rgba(0, 100, 255, 0.15), rgba(99, 102, 241, 0.15));
-            border: 1px solid rgba(0, 100, 255, 0.3);
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border: 1px solid #bfdbfe;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: var(--cyan-neon);
+            color: #1d4ed8;
             font-size: 1.8rem;
             transition: transform 0.3s;
         }
@@ -464,7 +481,7 @@
         .dropzone-prompt {
             font-size: 1rem;
             font-weight: 600;
-            color: var(--text-main);
+            color: #0f2b5c;
             margin-bottom: 0.35rem;
         }
 
@@ -478,9 +495,9 @@
             display: inline-block;
             font-family: var(--font-code);
             font-size: 0.72rem;
-            color: var(--cyan-neon);
-            background: rgba(0, 100, 255, 0.09);
-            border: 1px solid rgba(0, 100, 255, 0.22);
+            color: #1d4ed8;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
             padding: 0.2rem 0.6rem;
             border-radius: var(--radius-full);
         }
@@ -508,7 +525,7 @@
         }
 
         .preset-btn {
-            background: rgba(15, 23, 42, 0.6);
+            background: #f8fafc;
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             padding: 0.55rem;
@@ -521,8 +538,8 @@
         }
 
         .preset-btn:hover {
-            background: rgba(30, 41, 59, 0.9);
-            border-color: var(--cyan-neon);
+            background: #eff6ff;
+            border-color: #3b82f6;
             transform: translateY(-2px);
         }
 
@@ -531,8 +548,8 @@
             height: 34px;
             border-radius: 6px;
             object-fit: cover;
-            background: #020617;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
         }
 
         .preset-info {
@@ -542,7 +559,7 @@
         .preset-name {
             font-size: 0.75rem;
             font-weight: 600;
-            color: var(--text-main);
+            color: #0f2b5c;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -554,11 +571,11 @@
         }
 
         .preset-type.oil {
-            color: #f87171;
+            color: #dc2626;
         }
 
         .preset-type.clean {
-            color: #34d399;
+            color: #059669;
         }
 
         /* SAR Viewer and Image Toolbars */
@@ -571,9 +588,9 @@
             position: relative;
             width: 100%;
             height: 320px;
-            background: #020617;
+            background: #0b1329;
             border-radius: var(--radius-sm);
-            border: 1px solid var(--border-subtle);
+            border: 1px solid #cbd5e1;
             overflow: hidden;
             display: flex;
             align-items: center;
@@ -593,9 +610,9 @@
             inset: 0;
             pointer-events: none;
             background:
-                radial-gradient(circle at center, transparent 30%, rgba(0, 100, 255, 0.04) 70%, rgba(0, 182, 212, 0.1) 100%),
-                linear-gradient(rgba(0, 150, 255, 0.05) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 150, 255, 0.05) 1px, transparent 1px);
+                radial-gradient(circle at center, transparent 30%, rgba(37, 99, 235, 0.05) 70%, rgba(37, 99, 235, 0.12) 100%),
+                linear-gradient(rgba(59, 130, 246, 0.08) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(59, 130, 246, 0.08) 1px, transparent 1px);
             background-size: 100% 100%, 20px 20px, 20px 20px;
         }
 
@@ -606,7 +623,7 @@
             transform: translate(-50%, -50%);
             width: 60px;
             height: 60px;
-            border: 1px dashed rgba(0, 150, 255, 0.45);
+            border: 1px dashed rgba(59, 130, 246, 0.55);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -615,7 +632,7 @@
         .radar-crosshair::after {
             content: '';
             position: absolute;
-            background: rgba(0, 150, 255, 0.65);
+            background: rgba(59, 130, 246, 0.7);
         }
 
         .radar-crosshair::before {
@@ -641,8 +658,8 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, transparent, var(--cyan-neon), transparent);
-            box-shadow: 0 0 15px var(--cyan-neon);
+            background: linear-gradient(90deg, transparent, #38bdf8, transparent);
+            box-shadow: 0 0 15px #38bdf8;
             opacity: 0;
             pointer-events: none;
         }
@@ -685,8 +702,8 @@
         }
 
         .tool-btn {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
             color: var(--text-muted);
             width: 32px;
             height: 32px;
@@ -701,13 +718,13 @@
 
         .tool-btn:hover,
         .tool-btn.active {
-            background: rgba(0, 100, 255, 0.15);
-            border-color: var(--cyan-neon);
-            color: var(--cyan-neon);
+            background: #eff6ff;
+            border-color: #2563eb;
+            color: #1d4ed8;
         }
 
         .analyze-btn {
-            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            background: linear-gradient(135deg, #0f2b5c, #1d4ed8);
             color: #ffffff;
             border: none;
             padding: 0.5rem 1.4rem;
@@ -720,13 +737,13 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.35);
+            box-shadow: 0 4px 15px rgba(29, 78, 216, 0.35);
             transition: all 0.25s;
         }
 
         .analyze-btn:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 6px 25px rgba(14, 165, 233, 0.55);
+            box-shadow: 0 6px 25px rgba(29, 78, 216, 0.50);
         }
 
         .analyze-btn:disabled {
@@ -752,18 +769,19 @@
 
         .result-card.state-oil {
             border-color: var(--danger-red);
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(15, 23, 42, 0.85));
-            box-shadow: 0 0 35px var(--danger-glow);
+            background: linear-gradient(135deg, #fef2f2 0%, #ffffff 100%);
+            box-shadow: 0 8px 30px rgba(239, 68, 68, 0.15);
         }
 
         .result-card.state-clean {
             border-color: var(--success-green);
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(15, 23, 42, 0.85));
-            box-shadow: 0 0 35px var(--success-glow);
+            background: linear-gradient(135deg, #ecfdf5 0%, #ffffff 100%);
+            box-shadow: 0 8px 30px rgba(16, 185, 129, 0.15);
         }
 
         .result-card.state-idle {
             border-color: var(--border-subtle);
+            background: #ffffff;
         }
 
         .result-header {
@@ -787,25 +805,25 @@
         }
 
         .badge-classified.oil {
-            background: var(--danger-bg);
-            color: var(--danger-red);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fca5a5;
         }
 
         .badge-classified.clean {
-            background: var(--success-bg);
-            color: var(--success-green);
-            border: 1px solid rgba(16, 185, 129, 0.3);
+            background: #d1fae5;
+            color: #059669;
+            border: 1px solid #6ee7b7;
         }
 
         .badge-classified.inconclusive {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fbbf24;
-            border: 1px solid rgba(245, 158, 11, 0.35);
+            background: #fef3c7;
+            color: #b45309;
+            border: 1px solid #fcd34d;
         }
 
         .badge-classified.idle {
-            background: rgba(255, 255, 255, 0.06);
+            background: #f1f5f9;
             color: var(--text-muted);
             border: 1px solid var(--border-subtle);
         }
@@ -814,6 +832,7 @@
             font-family: var(--font-tech);
             font-size: 1.8rem;
             font-weight: 800;
+            color: #0f2b5c;
             line-height: 1.2;
             margin-bottom: 0.4rem;
         }
@@ -833,8 +852,8 @@
         }
 
         .score-box {
-            background: rgba(0, 0, 0, 0.25);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+            background: #f8fafc;
+            border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             padding: 0.9rem;
         }
@@ -853,11 +872,12 @@
             font-family: var(--font-tech);
             font-size: 1.5rem;
             font-weight: 700;
+            color: #0f2b5c;
         }
 
         .progress-bar-wrap {
             height: 6px;
-            background: rgba(255, 255, 255, 0.08);
+            background: #e2e8f0;
             border-radius: var(--radius-full);
             overflow: hidden;
             margin-top: 0.6rem;
@@ -872,12 +892,12 @@
 
         .fill-oil {
             background: linear-gradient(90deg, #f59e0b, #ef4444);
-            box-shadow: 0 0 10px #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
         }
 
         .fill-clean {
-            background: linear-gradient(90deg, #0055ff, #10b981);
-            box-shadow: 0 0 10px #10b981;
+            background: linear-gradient(90deg, #1d4ed8, #10b981);
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
         }
 
         /* Response Telemetry & Details */
@@ -892,7 +912,7 @@
         }
 
         .telemetry-item {
-            background: rgba(0, 0, 0, 0.2);
+            background: #f8fafc;
             border: 1px solid var(--border-subtle);
             border-radius: var(--radius-sm);
             padding: 0.6rem 0.8rem;
@@ -909,7 +929,8 @@
         .telemetry-val {
             font-family: var(--font-code);
             font-size: 0.85rem;
-            color: var(--text-main);
+            color: #0f2b5c;
+            font-weight: 600;
             word-break: break-all;
         }
 
@@ -918,20 +939,21 @@
             margin-top: 1rem;
             padding: 0.9rem 1rem;
             border-radius: var(--radius-sm);
-            border-left: 3px solid var(--cyan-neon);
-            background: rgba(0, 100, 255, 0.06);
+            border-left: 3px solid #1d4ed8;
+            background: #eff6ff;
+            color: #1e293b;
             font-size: 0.82rem;
             line-height: 1.5;
         }
 
         .action-protocol-box.oil {
             border-left-color: var(--danger-red);
-            background: rgba(239, 68, 68, 0.07);
+            background: #fef2f2;
         }
 
         .action-protocol-title {
             font-weight: 700;
-            color: var(--text-main);
+            color: #0f2b5c;
             margin-bottom: 0.25rem;
             display: flex;
             align-items: center;
@@ -957,7 +979,7 @@
 
         .history-table th {
             padding: 0.6rem 0.8rem;
-            border-bottom: 1px solid var(--border-subtle);
+            border-bottom: 1px solid #cbd5e1;
             color: var(--text-subtle);
             font-family: var(--font-code);
             font-weight: 600;
@@ -965,19 +987,19 @@
             font-size: 0.68rem;
             position: sticky;
             top: 0;
-            background: #0f172a;
+            background: #f1f5f9;
         }
 
         .history-table td {
             padding: 0.6rem 0.8rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-            color: var(--text-muted);
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
             vertical-align: middle;
         }
 
         .history-table tr:hover td {
-            background: rgba(255, 255, 255, 0.02);
-            color: var(--text-main);
+            background: #eff6ff;
+            color: #0f2b5c;
         }
 
         .history-thumb {
@@ -985,14 +1007,14 @@
             height: 28px;
             border-radius: 4px;
             object-fit: cover;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid #cbd5e1;
         }
 
         /* Settings / API Modal */
         .modal-backdrop {
             position: fixed;
             inset: 0;
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(15, 23, 42, 0.45);
             backdrop-filter: blur(6px);
             display: flex;
             align-items: center;
@@ -1011,11 +1033,11 @@
         .modal-content {
             width: 100%;
             max-width: 480px;
-            background: #0f172a;
-            border: 1px solid var(--border-subtle);
+            background: #ffffff;
+            border: 1px solid #cbd5e1;
             border-radius: var(--radius-md);
             padding: 1.5rem;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+            box-shadow: 0 25px 50px -12px rgba(15, 43, 92, 0.25);
         }
 
         .modal-header {
@@ -1029,6 +1051,7 @@
             font-family: var(--font-tech);
             font-size: 1.15rem;
             font-weight: 700;
+            color: #0f2b5c;
         }
 
         .input-label {
@@ -1041,20 +1064,20 @@
 
         .input-field {
             width: 100%;
-            background: #070b13;
-            border: 1px solid var(--border-subtle);
-            color: var(--text-main);
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            color: #0f172a;
             padding: 0.6rem 0.9rem;
             border-radius: var(--radius-sm);
             font-family: var(--font-code);
             font-size: 0.85rem;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
 
         .input-field:focus {
-            border-color: var(--cyan-neon);
-            box-shadow: 0 0 10px var(--cyan-glow);
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
 
         .modal-footer {
@@ -1083,14 +1106,14 @@
             position: fixed;
             bottom: 2rem;
             right: 2rem;
-            background: #0f172a;
-            border: 1px solid var(--cyan-neon);
-            color: var(--text-main);
+            background: #0f2b5c;
+            border: 1px solid #2563eb;
+            color: #ffffff;
             padding: 0.75rem 1.25rem;
             border-radius: var(--radius-sm);
             font-size: 0.85rem;
             font-family: var(--font-code);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 25px rgba(15, 43, 92, 0.25);
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -1132,6 +1155,14 @@
             </div>
 
             <div class="header-actions">
+                <a href="data.html" id="nav-data-intelligence" class="btn-primary" style="text-decoration:none; display:inline-flex; align-items:center; gap:0.45rem; padding:0.42rem 0.95rem; font-size:0.82rem; border-radius:var(--radius-full); font-weight:600; background:linear-gradient(135deg, #0f2b5c, #1d4ed8); color:#ffffff; border:1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 8px rgba(15, 43, 92, 0.2); transition: transform 0.15s, box-shadow 0.15s;">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span>Data & Intelligence</span>
+                </a>
                 <button id="api-status-pill" class="status-pill" title="Click to configure API Base URL">
                     <span id="api-status-dot" class="status-dot checking"></span>
                     <span id="api-status-text">Checking API...</span>
@@ -1506,16 +1537,15 @@
                 <button class="tool-btn" onclick="toggleConfigModal(false)">&times;</button>
             </div>
             <div>
-                <label class="input-label" for="api-url-input">API Base URL (FastAPI Endpoint)</label>
+                <label class="input-label" for="api-url-input">API Base URL (Production Cloud Endpoint)</label>
                 <input type="text" id="api-url-input" class="input-field" value=""
-                    placeholder="https://YOUR-BACKEND-DOMAIN or http://localhost:8000" />
+                    placeholder="https://sentinel1-sar-oil-spill-api.onrender.com" />
                 <div style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 0.6rem; line-height: 1.6;">
                     <div><strong>Active Endpoint:</strong> <code id="api-configured-url"
                             style="color: var(--cyan-neon);">--</code></div>
                     <div style="margin-top: 0.35rem;">
-                        &bull; <strong>Local Dev:</strong> <code>http://localhost:8000</code><br />
-                        &bull; <strong>GitHub Pages / Cloud:</strong> Enter your deployed HTTPS backend URL (e.g.
-                        Render, Railway, Hugging Face).
+                        &bull; <strong>Cloud Production API:</strong> Deployed on Render / Cloud platforms.<br />
+                        &bull; All requests use secure HTTPS without hardcoded localhost URLs.
                     </div>
                 </div>
             </div>
@@ -2051,7 +2081,7 @@
                 badgeText.textContent = 'CRITICAL: OIL SPILL DETECTED';
 
                 verdictTitle.textContent = 'High-Probability Oil Spill Signature';
-                verdictTitle.style.color = '#f87171';
+                verdictTitle.style.color = '#dc2626';
                 verdictDesc.textContent = isDemo
                     ? `SAR radar backscatter damping pattern identified by Sentinel-1 Edge Classifier. Low radar return confirms surface ocean wave smoothing.`
                     : `SAR radar backscatter damping pattern identified by ${modelArch}. Model confidence is ${confPct}% (raw sigmoid score: ${rawFormatted}).`;
@@ -2060,11 +2090,11 @@
                 barRaw.className = 'progress-bar-fill fill-oil';
 
                 metaDecision.textContent = 'OIL SPILL';
-                metaDecision.style.color = '#ef4444';
+                metaDecision.style.color = '#dc2626';
 
                 protocolBox.style.display = 'block';
                 protocolBox.className = 'action-protocol-box oil';
-                protocolTitle.innerHTML = `<span style="color:#ef4444;">🚨 Emergency Response Protocol Triggered:</span>`;
+                protocolTitle.innerHTML = `<span style="color:#dc2626;">🚨 Emergency Response Protocol Triggered:</span>`;
                 protocolBody.innerHTML = `
           &bull; <strong>Coordinate Alert:</strong> Log tile center coordinates to maritime disaster surveillance feed.<br/>
           &bull; <strong>Multi-Spectral Tasking:</strong> Request Sentinel-2 optical verification on next orbital pass.<br/>
@@ -2077,18 +2107,18 @@
                 badgeText.textContent = 'INCONCLUSIVE: RADAR ANOMALY';
 
                 verdictTitle.textContent = 'Inconclusive Surface Signature';
-                verdictTitle.style.color = '#fbbf24';
+                verdictTitle.style.color = '#b45309';
                 verdictDesc.textContent = `Borderline surface backscatter detected. Low wind or sea surface clutter causes ambiguous damping return. Re-inspection advised.`;
 
                 barConfidence.className = 'progress-bar-fill';
                 barRaw.className = 'progress-bar-fill';
 
                 metaDecision.textContent = 'INCONCLUSIVE';
-                metaDecision.style.color = '#f59e0b';
+                metaDecision.style.color = '#b45309';
 
                 protocolBox.style.display = 'block';
                 protocolBox.className = 'action-protocol-box';
-                protocolTitle.innerHTML = `<span style="color:#fbbf24;">⚠️ Verification Required:</span>`;
+                protocolTitle.innerHTML = `<span style="color:#b45309;">⚠️ Verification Required:</span>`;
                 protocolBody.innerHTML = `
           &bull; <strong>Secondary Sensor Tasking:</strong> Request high-resolution optical re-scan or multi-polarization pass.<br/>
           &bull; <strong>Analyst Review:</strong> Environmental conditions show intermediate radar cross-section.
@@ -2100,7 +2130,7 @@
                 badgeText.textContent = 'CLEAN OCEAN SURFACE';
 
                 verdictTitle.textContent = 'No Oil Spill Signatures Detected';
-                verdictTitle.style.color = '#34d399';
+                verdictTitle.style.color = '#059669';
                 verdictDesc.textContent = isDemo
                     ? `SAR roughness and radar cross-section are consistent with natural open ocean water.`
                     : `SAR roughness and radar cross-section are consistent with natural open ocean water as evaluated by ${modelArch}. (Confidence: ${confPct}%).`;
@@ -2109,11 +2139,11 @@
                 barRaw.className = 'progress-bar-fill fill-clean';
 
                 metaDecision.textContent = 'CLEAN';
-                metaDecision.style.color = '#10b981';
+                metaDecision.style.color = '#059669';
 
                 protocolBox.style.display = 'block';
                 protocolBox.className = 'action-protocol-box';
-                protocolTitle.innerHTML = `<span style="color:#00aaff;">🌊 Standard Surveillance Status:</span>`;
+                protocolTitle.innerHTML = `<span style="color:#1d4ed8;">🌊 Standard Surveillance Status:</span>`;
                 protocolBody.innerHTML = `
           &bull; <strong>Routine Monitoring:</strong> Normal surface backscatter confirmed. No immediate threat identified.<br/>
           &bull; <strong>Archive:</strong> SAR patch telemetry stored in historical baseline database.

@@ -1,0 +1,68 @@
+[
+  {
+    "scene_id": "S1A_IW_GRDH_1SDV_20260919T032840_20260919T032905_050410_0615DF_C890",
+    "satellite_name": "Sentinel-1A",
+    "acquisition_time": "2026-09-19T03:28:40Z",
+    "latitude": 10.050,
+    "longitude": 75.950,
+    "bounding_box": {
+      "min_lat": 9.100,
+      "max_lat": 11.000,
+      "min_lon": 75.100,
+      "max_lon": 76.800
+    },
+    "orbit_number": 50410,
+    "orbit_direction": "DESCENDING",
+    "polarization": "VV+VH",
+    "resolution_m": 10.0,
+    "cloud_cover": 0.0,
+    "image_url": "sample_images/oil_sample_1.jpg",
+    "processing_status": "ANALYZED",
+    "oil_detected": true,
+    "source": "DEMO/DATASET"
+  },
+  {
+    "scene_id": "S1A_IW_GRDH_1SDV_20260918T144012_20260918T144037_050398_0614AA_A122",
+    "satellite_name": "Sentinel-1A",
+    "acquisition_time": "2026-09-18T14:40:12Z",
+    "latitude": 10.200,
+    "longitude": 75.800,
+    "bounding_box": {
+      "min_lat": 9.200,
+      "max_lat": 11.200,
+      "min_lon": 74.900,
+      "max_lon": 76.700
+    },
+    "orbit_number": 50398,
+    "orbit_direction": "ASCENDING",
+    "polarization": "VV+VH",
+    "resolution_m": 10.0,
+    "cloud_cover": 0.0,
+    "image_url": "sample_images/clean_sample_1.jpg",
+    "processing_status": "PROCESSED",
+    "oil_detected": false,
+    "source": "DEMO/DATASET"
+  },
+  {
+    "scene_id": "S1B_IW_GRDH_1SDV_20260916T041210_20260916T041235_034211_0428BC_F981",
+    "satellite_name": "Sentinel-1B",
+    "acquisition_time": "2026-09-16T04:12:10Z",
+    "latitude": 9.850,
+    "longitude": 76.100,
+    "bounding_box": {
+      "min_lat": 8.900,
+      "max_lat": 10.800,
+      "min_lon": 75.200,
+      "max_lon": 77.000
+    },
+    "orbit_number": 34211,
+    "orbit_direction": "DESCENDING",
+    "polarization": "VV",
+    "resolution_m": 10.0,
+    "cloud_cover": 0.0,
+    "image_url": "sample_images/oil_sample_1.jpg",
+    "processing_status": "ANALYZED",
+    "oil_detected": true,
+    "source": "HISTORICAL"
+  }
+]

@@ -1,0 +1,131 @@
+[
+  {
+    "mmsi": "412345678",
+    "vessel_name": "PACIFIC EXPLORER",
+    "vessel_type": "Tanker",
+    "flag": "Panama",
+    "latitude": 9.852,
+    "longitude": 75.920,
+    "speed": 13.4,
+    "course": 332.0,
+    "heading": 330.0,
+    "destination": "MUMBAI HIGH",
+    "timestamp": "2026-09-19T08:30:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 9.420, "longitude": 76.150, "speed": 13.8, "course": 330.0, "timestamp": "2026-09-19T05:30:00Z", "source": "HISTORICAL"},
+      {"latitude": 9.610, "longitude": 76.040, "speed": 13.6, "course": 331.0, "timestamp": "2026-09-19T07:00:00Z", "source": "HISTORICAL"},
+      {"latitude": 9.852, "longitude": 75.920, "speed": 13.4, "course": 332.0, "timestamp": "2026-09-19T08:30:00Z", "source": "HISTORICAL"}
+    ]
+  },
+  {
+    "mmsi": "563001240",
+    "vessel_name": "STAR VOYAGER",
+    "vessel_type": "Tanker",
+    "flag": "Singapore",
+    "latitude": 10.145,
+    "longitude": 75.810,
+    "speed": 14.1,
+    "course": 328.0,
+    "heading": 326.0,
+    "destination": "FUJAIRAH",
+    "timestamp": "2026-09-19T08:45:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 9.810, "longitude": 76.010, "speed": 14.2, "course": 328.0, "timestamp": "2026-09-19T06:15:00Z", "source": "HISTORICAL"},
+      {"latitude": 10.020, "longitude": 75.890, "speed": 14.0, "course": 328.0, "timestamp": "2026-09-19T07:30:00Z", "source": "HISTORICAL"},
+      {"latitude": 10.145, "longitude": 75.810, "speed": 14.1, "course": 328.0, "timestamp": "2026-09-19T08:45:00Z", "source": "HISTORICAL"}
+    ]
+  },
+  {
+    "mmsi": "419000312",
+    "vessel_name": "INS SAGARIKA",
+    "vessel_type": "Cargo",
+    "flag": "India",
+    "latitude": 9.940,
+    "longitude": 76.220,
+    "speed": 11.2,
+    "course": 15.0,
+    "heading": 16.0,
+    "destination": "COCHIN PORT",
+    "timestamp": "2026-09-19T09:00:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 9.720, "longitude": 76.180, "speed": 11.5, "course": 14.0, "timestamp": "2026-09-19T07:00:00Z", "source": "HISTORICAL"},
+      {"latitude": 9.940, "longitude": 76.220, "speed": 11.2, "course": 15.0, "timestamp": "2026-09-19T09:00:00Z", "source": "HISTORICAL"}
+    ]
+  },
+  {
+    "mmsi": "352001990",
+    "vessel_name": "OCEAN GLORY",
+    "vessel_type": "Tanker",
+    "flag": "Liberia",
+    "latitude": 10.080,
+    "longitude": 75.980,
+    "speed": 12.8,
+    "course": 335.0,
+    "heading": 334.0,
+    "destination": "KANDLA",
+    "timestamp": "2026-09-19T08:15:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 9.650, "longitude": 76.210, "speed": 13.0, "course": 334.0, "timestamp": "2026-09-19T05:00:00Z", "source": "HISTORICAL"},
+      {"latitude": 9.870, "longitude": 76.090, "speed": 12.9, "course": 335.0, "timestamp": "2026-09-19T06:40:00Z", "source": "HISTORICAL"},
+      {"latitude": 10.080, "longitude": 75.980, "speed": 12.8, "course": 335.0, "timestamp": "2026-09-19T08:15:00Z", "source": "HISTORICAL"}
+    ]
+  },
+  {
+    "mmsi": "636018241",
+    "vessel_name": "NORDIC BREEZE",
+    "vessel_type": "Cargo",
+    "flag": "Marshall Islands",
+    "latitude": 10.350,
+    "longitude": 75.650,
+    "speed": 15.0,
+    "course": 320.0,
+    "heading": 320.0,
+    "destination": "PORT SULTAN QABOOS",
+    "timestamp": "2026-09-19T09:10:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 9.980, "longitude": 75.880, "speed": 15.1, "course": 320.0, "timestamp": "2026-09-19T07:10:00Z", "source": "HISTORICAL"},
+      {"latitude": 10.350, "longitude": 75.650, "speed": 15.0, "course": 320.0, "timestamp": "2026-09-19T09:10:00Z", "source": "HISTORICAL"}
+    ]
+  },
+  {
+    "mmsi": "419998120",
+    "vessel_name": "MALABAR PRIDE",
+    "vessel_type": "Fishing",
+    "flag": "India",
+    "latitude": 9.910,
+    "longitude": 76.120,
+    "speed": 6.5,
+    "course": 210.0,
+    "heading": 210.0,
+    "destination": "COCHIN FISHING HARBOUR",
+    "timestamp": "2026-09-19T09:05:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 10.010, "longitude": 76.080, "speed": 6.2, "course": 205.0, "timestamp": "2026-09-19T08:00:00Z", "source": "HISTORICAL"},
+      {"latitude": 9.910, "longitude": 76.120, "speed": 6.5, "course": 210.0, "timestamp": "2026-09-19T09:05:00Z", "source": "HISTORICAL"}
+    ]
+  },
+  {
+    "mmsi": "419000889",
+    "vessel_name": "OCEAN PIONEER",
+    "vessel_type": "Tug",
+    "flag": "India",
+    "latitude": 9.970,
+    "longitude": 76.240,
+    "speed": 8.0,
+    "course": 270.0,
+    "heading": 272.0,
+    "destination": "KOCHI ANCHORAGE",
+    "timestamp": "2026-09-19T09:15:00Z",
+    "source": "HISTORICAL",
+    "history": [
+      {"latitude": 9.965, "longitude": 76.270, "speed": 7.8, "course": 270.0, "timestamp": "2026-09-19T08:30:00Z", "source": "HISTORICAL"},
+      {"latitude": 9.970, "longitude": 76.240, "speed": 8.0, "course": 270.0, "timestamp": "2026-09-19T09:15:00Z", "source": "HISTORICAL"}
+    ]
+  }
+]

@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NarcoLocker – Secure Evidence Platform</title>
+    <meta name="description" content="Forensic & Law-Enforcement Digital Evidence Management, Chain-of-Custody Verification, and AI Colorimetric Analysis System">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" integrity="sha512-DTOQO9RWCH3ppGqcWaEA1BIZOC6xxalwEsw9c2QQeAIftl+Vegovlnee1c9QX4TctnWMn13TZye+giMm8e2LwA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <!-- Leaflet CSS for Geospatial Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Application Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="dark-theme">
+
+    <!-- Fixed Top Navigation Bar -->
+    <header class="top-nav" id="mainHeader">
+        <div class="nav-container">
+            <!-- Left Branding -->
+            <div class="brand-cluster" onclick="switchView('view-dashboard')">
+                <div class="brand-logo-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="brand-titles">
+                    <span class="brand-name">NarcoLocker</span>
+                    <span class="brand-subtitle">Secure Evidence Platform</span>
+                </div>
+            </div>
+
+            <!-- Primary Navigation Links -->
+            <nav class="nav-menu" id="primaryNavMenu">
+                <a href="#dashboard" class="nav-link active" data-view="view-dashboard">
+                    <i class="fa-solid fa-gauge-high"></i> <span>Dashboard</span>
+                </a>
+                <a href="#evidence" class="nav-link" data-view="view-evidence">
+                    <i class="fa-solid fa-boxes-stacked"></i> <span>Evidence</span>
+                </a>
+                <a href="#capture" class="nav-link" data-view="view-capture">
+                    <i class="fa-solid fa-camera-viewfinder"></i> <span>Capture Evidence</span>
+                </a>
+                <a href="#cases" class="nav-link" data-view="view-cases">
+                    <i class="fa-solid fa-folder-tree"></i> <span>Cases</span>
+                </a>
+                <a href="#reports" class="nav-link" data-view="view-reports">
+                    <i class="fa-solid fa-file-shield"></i> <span>Reports</span>
+                </a>
+                <a href="#analytics" class="nav-link" data-view="view-analytics">
+                    <i class="fa-solid fa-chart-line"></i> <span>Analytics</span>
+                </a>
+                <a href="#map" class="nav-link" data-view="view-map">
+                    <i class="fa-solid fa-map-location-dot"></i> <span>Geospatial</span>
+                </a>
+                <a href="#admin" class="nav-link" data-view="view-admin">
+                    <i class="fa-solid fa-user-shield"></i> <span>Admin</span>
+                </a>
+            </nav>
+
+            <!-- Right Profile & Utilities -->
+            <div class="nav-actions">
+                <div class="system-status-indicator" title="Cryptographic consensus node operational">
+                    <span class="status-dot pulsing"></span>
+                    <span class="status-label">VAULT: ONLINE</span>
+                </div>
+
+                <button class="nav-icon-btn" id="notifBtn" onclick="toggleNotificationsDrawer()" title="Alerts & Logs">
+                    <i class="fa-regular fa-bell"></i>
+                    <span class="notif-badge" id="navNotificationCount">3</span>
+                </button>
+
+                <div class="user-profile-badge">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150" alt="Investigator" class="user-avatar">
+                    <div class="user-info">
+                        <span class="user-name">Alex Mercer</span>
+                        <span class="user-role">INV-7842 &bull; Forensics</span>
+                    </div>
+                </div>
+
+                <button class="mobile-hamburger" id="mobileHamburgerBtn" title="Toggle Navigation">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Mobile Drawer Navigation -->
+    <div class="mobile-nav-drawer" id="mobileNavDrawer">
+        <nav class="mobile-menu-links">
+            <a href="#dashboard" class="nav-link active" data-view="view-dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</a>
+            <a href="#evidence" class="nav-link" data-view="view-evidence"><i class="fa-solid fa-boxes-stacked"></i> Evidence</a>
+            <a href="#capture" class="nav-link" data-view="view-capture"><i class="fa-solid fa-camera-viewfinder"></i> Capture Evidence</a>
+            <a href="#cases" class="nav-link" data-view="view-cases"><i class="fa-solid fa-folder-tree"></i> Cases</a>
+            <a href="#reports" class="nav-link" data-view="view-reports"><i class="fa-solid fa-file-shield"></i> Reports</a>
+            <a href="#analytics" class="nav-link" data-view="view-analytics"><i class="fa-solid fa-chart-line"></i> Analytics</a>
+            <a href="#map" class="nav-link" data-view="view-map"><i class="fa-solid fa-map-location-dot"></i> Geospatial Map</a>
+            <a href="#admin" class="nav-link" data-view="view-admin"><i class="fa-solid fa-user-shield"></i> Admin Suite</a>
+        </nav>
+    </div>
+
+    <!-- Notification Side Drawer -->
+    <aside class="side-drawer" id="notificationsDrawer">
+        <div class="drawer-header">
+            <h3><i class="fa-solid fa-bell text-accent"></i> System Audit & Alerts</h3>
+            <button class="drawer-close-btn" onclick="toggleNotificationsDrawer()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-actions">
+            <button class="btn btn-secondary btn-xs" onclick="markAllNotificationsRead()"><i class="fa-solid fa-check-double"></i> Mark All Read</button>
+        </div>
+        <div class="drawer-content" id="notificationsList">
+            <!-- Populated via JavaScript -->
+        </div>
+    </aside>
+
+    <!-- Main Container -->
+    <main class="app-main-content">
+
+        <!-- VIEW 1: DASHBOARD -->
+        <section class="view-panel active" id="view-dashboard">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Forensic Operations Dashboard</h1>
+                    <p class="view-subtitle">Real-time custody ledger, cryptographic integrity proofs, and AI intake pipeline</p>
+                </div>
+                <div class="view-header-actions">
+                    <button class="btn btn-secondary" onclick="switchView('view-evidence')">
+                        <i class="fa-solid fa-magnifying-glass"></i> Search Vault
+                    </button>
+                    <button class="btn btn-primary" onclick="switchView('view-capture')">
+                        <i class="fa-solid fa-plus"></i> Capture Evidence
+                    </button>
+                </div>
+            </div>
+
+            <!-- Vault Cryptographic Banner -->
+            <div class="alert-banner safe" id="vaultIntegrityBanner">
+                <i class="fa-solid fa-shield-halved"></i> <strong>SECURE LOCKER STATE:</strong> All digital evidence items verified against cryptographic hashes. Vault Zero-Knowledge proof valid.
+            </div>
+
+            <!-- Stat Metric Cards (6 core metrics) -->
+            <div class="stats-grid">
+                <div class="stat-card glass-card">
+                    <div class="stat-icon-wrap cyan"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    <div class="stat-content">
+                        <span class="stat-label">Total Evidence Items</span>
+                        <h2 class="stat-value" id="statTotalEvidence">1,248</h2>
+                        <span class="stat-trend text-success"><i class="fa-solid fa-arrow-up"></i> +12 this week</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-icon-wrap blue"><i class="fa-solid fa-folder-tree"></i></div>
+                    <div class="stat-content">
+                        <span class="stat-label">Active Cases</span>
+                        <h2 class="stat-value" id="statActiveCases">42</h2>
+                        <span class="stat-trend text-muted">Across 8 precincts</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-icon-wrap purple"><i class="fa-solid fa-brain"></i></div>
+                    <div class="stat-content">
+                        <span class="stat-label">AI Colorimetric Verified</span>
+                        <h2 class="stat-value" id="statVerified">1,196</h2>
+                        <span class="stat-trend text-accent">98.8% accuracy rate</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-icon-wrap red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <div class="stat-content">
+                        <span class="stat-label">Tamper Alerts</span>
+                        <h2 class="stat-value text-danger" id="statTampered">0</h2>
+                        <span class="stat-trend text-muted">Zero-tolerance hashing</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-icon-wrap green"><i class="fa-solid fa-network-wired"></i></div>
+                    <div class="stat-content">
+                        <span class="stat-label">Network Consensus</span>
+                        <h2 class="stat-value text-success">100%</h2>
+                        <span class="stat-trend text-success"><i class="fa-solid fa-check"></i> FIPS 180-4 Standard</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-card">
+                    <div class="stat-icon-wrap teal"><i class="fa-solid fa-cubes"></i></div>
+                    <div class="stat-content">
+                        <span class="stat-label">Ledger Height</span>
+                        <h2 class="stat-value mono-sm">#892,114</h2>
+                        <span class="stat-trend text-accent">Proof-of-Authority</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Two Column Dashboard Layout -->
+            <div class="dashboard-split-layout">
+                <!-- Recent Evidence Registry -->
+                <div class="dashboard-col flex-2">
+                    <div class="section-card-header">
+                        <h3><i class="fa-solid fa-shield-cat text-accent"></i> Recent Secured Evidence</h3>
+                        <button class="btn btn-text" onclick="switchView('view-evidence')">View Complete Vault &rarr;</button>
+                    </div>
+                    <div class="recent-evidence-grid" id="recentEvidenceGrid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Recent Immutable Audit Trail -->
+                <div class="dashboard-col flex-1">
+                    <div class="section-card-header">
+                        <h3><i class="fa-solid fa-clock-rotate-left text-accent"></i> Chain-of-Custody Audit</h3>
+                        <button class="btn btn-text" onclick="switchView('view-admin')">View Logs &rarr;</button>
+                    </div>
+                    <div class="recent-audit-box glass-card" id="recentActivityList">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: EVIDENCE MANAGEMENT -->
+        <section class="view-panel" id="view-evidence">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Digital Evidence Vault</h1>
+                    <p class="view-subtitle">Search, filter, cryptographically audit, and download custody records</p>
+                </div>
+                <div class="view-header-actions">
+                    <button class="btn btn-primary" onclick="switchView('view-capture')">
+                        <i class="fa-solid fa-plus"></i> New Intake
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filter Controls Card -->
+            <div class="filter-bar glass-card">
+                <div class="search-input-wrap">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="evidenceSearch" placeholder="Search by Evidence ID, Case ID, Officer, Hash, or Substance...">
+                </div>
+
+                <div class="filter-dropdowns">
+                    <select id="filterCase" class="form-select">
+                        <option value="ALL">All Active Cases</option>
+                    </select>
+
+                    <select id="filterType" class="form-select">
+                        <option value="ALL">All Types</option>
+                        <option value="Chemical Substance">Chemical Substance</option>
+                        <option value="Pills / Tablets">Pills / Tablets</option>
+                        <option value="Paraphernalia">Paraphernalia</option>
+                    </select>
+
+                    <select id="filterStatus" class="form-select">
+                        <option value="ALL">All Vault States</option>
+                        <option value="Verified">Verified (Hash Valid)</option>
+                        <option value="Under Review">Under Review</option>
+                        <option value="Tampered">Tampered (Checksum Alert)</option>
+                    </select>
+
+                    <select id="sortEvidence" class="form-select">
+                        <option value="date_desc">Newest First</option>
+                        <option value="date_asc">Oldest First</option>
+                        <option value="id_asc">Evidence ID (A-Z)</option>
+                        <option value="confidence">Highest AI Confidence</option>
+                    </select>
+
+                    <div class="view-mode-toggle">
+                        <button class="mode-btn active" id="modeBtn_table" onclick="setDisplayMode('table')" title="Table View">
+                            <i class="fa-solid fa-table-list"></i>
+                        </button>
+                        <button class="mode-btn" id="modeBtn_grid" onclick="setDisplayMode('grid')" title="Card Grid View">
+                            <i class="fa-solid fa-grip"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="filter-summary-row">
+                <span id="evidenceFilterCount" class="text-muted mono-sm">Showing 5 of 5 evidence records</span>
+                <span class="crypto-fips-tag"><i class="fa-solid fa-lock"></i> AES-256 / SHA-256 Storage Certified</span>
+            </div>
+
+            <!-- Evidence Render Target -->
+            <div id="evidenceContainer">
+                <!-- Rendered dynamically via app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW 3: CAPTURE EVIDENCE & AI PIPELINE -->
+        <section class="view-panel" id="view-capture">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Intake & Real-Time AI Forensic Analysis</h1>
+                    <p class="view-subtitle">Live camera calibration, Reference Colour Card alignment, and deep spectrophotometric evaluation</p>
+                </div>
+            </div>
+
+            <div class="capture-layout-grid">
+                <!-- Left: Viewfinder & Calibration Feed -->
+                <div class="capture-camera-card glass-card">
+                    <div class="viewfinder-container">
+                        <img id="cameraFeedPreview" src="https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&q=80&w=600" alt="Camera Feed" class="viewfinder-feed">
+                        
+                        <!-- Overlay Reticle -->
+                        <div class="viewfinder-overlay">
+                            <div class="crosshair-center"></div>
+                            
+                            <!-- Calibration Target Box -->
+                            <div class="color-card-reticle" id="colorCardReticle">
+                                <div class="reticle-corner tl"></div>
+                                <div class="reticle-corner tr"></div>
+                                <div class="reticle-corner bl"></div>
+                                <div class="reticle-corner br"></div>
+                                <div class="reticle-tag">REF COLOUR CARD #04</div>
+                            </div>
+                        </div>
+
+                        <!-- Live Status Badges on Feed -->
+                        <div class="viewfinder-badges">
+                            <span class="status-badge verified" id="cardDetectionBadge">
+                                <i class="fa-solid fa-circle-check"></i> Calibrated Reference Card Detected
+                            </span>
+                            <span class="camera-lux-badge"><i class="fa-solid fa-sun"></i> 640 LUX &bull; 5600K</span>
+                        </div>
+                    </div>
+
+                    <div class="camera-controls-bar">
+                        <div class="sample-presets">
+                            <span class="preset-label">Simulation Sample:</span>
+                            <button class="btn btn-xs btn-outline-cyan" onclick="setSamplePreset('cocaine')">Cocaine HCl</button>
+                            <button class="btn btn-xs btn-outline-cyan" onclick="setSamplePreset('meth')">Meth Shards</button>
+                            <button class="btn btn-xs btn-outline-cyan" onclick="setSamplePreset('mdma')">MDMA Tablets</button>
+                            <button class="btn btn-xs btn-outline-cyan" onclick="setSamplePreset('negative')">Inert Powder</button>
+                        </div>
+                        <button class="btn btn-xs btn-secondary" onclick="toggleColorCardDetection()">
+                            <i class="fa-solid fa-palette"></i> Toggle Ref Card Detection
+                        </button>
+                    </div>
+
+                    <div class="card-missing-warning" id="cardDetectionWarning" style="display: none;">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <strong>MANDATORY CALIBRATION TARGET MISSING:</strong> For court-admissible forensic certainty, position the certified NarcoLocker Colour Reference Card within the marked frame.
+                    </div>
+                </div>
+
+                <!-- Right: Evidence Metadata Intake Form -->
+                <div class="capture-form-card glass-card">
+                    <h3 class="form-card-title"><i class="fa-solid fa-file-pen text-accent"></i> Intake Registration</h3>
+
+                    <form id="captureIntakeForm" onsubmit="event.preventDefault(); startAIAnalysisPipeline();">
+                        <div class="form-group">
+                            <label class="form-label">Assign to Case File</label>
+                            <select id="captureCaseSelect" class="form-control" required>
+                                <!-- Populated dynamically -->
+                            </select>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group flex-1">
+                                <label class="form-label">Suspected Category</label>
+                                <select id="captureCategory" class="form-control">
+                                    <option value="Chemical Powder">Chemical Powder</option>
+                                    <option value="Pills / Tablets">Pills / Pressed Tablets</option>
+                                    <option value="Crystalline Substance">Crystalline Substance</option>
+                                    <option value="Plant Residue">Plant Residue</option>
+                                </select>
+                            </div>
+                            <div class="form-group flex-1">
+                                <label class="form-label">Gross Mass / Weight</label>
+                                <input type="text" id="captureWeight" class="form-control" value="185.0 g" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Seizure Location</label>
+                            <input type="text" id="captureLocation" class="form-control" value="Pier 14 Cargo Bay, Sector 7" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Chain-of-Custody Field Notes</label>
+                            <textarea id="captureNotes" class="form-control" rows="3" placeholder="Describe packaging conditions, physical seals, or officer observations..."></textarea>
+                        </div>
+
+                        <div class="compliance-box">
+                            <i class="fa-solid fa-certificate text-accent"></i>
+                            <div>
+                                <strong>ISO/IEC 17025 Compliance Protocol</strong>
+                                <p>Automated White Balance, delta E color verification, and client-side SHA-256 hashing will execute upon capture trigger.</p>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg w-100 mt-3" id="executePipelineBtn">
+                            <i class="fa-solid fa-atom"></i> Execute 8-Step AI Forensic Pipeline
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: CASE MANAGEMENT -->
+        <section class="view-panel" id="view-cases">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Case Management Files</h1>
+                    <p class="view-subtitle">Organize evidence dossiers, monitor custody transitions, and assemble courtroom packages</p>
+                </div>
+                <div class="view-header-actions">
+                    <button class="btn btn-primary" onclick="openCreateCaseModal()">
+                        <i class="fa-solid fa-plus"></i> Create New Case
+                    </button>
+                </div>
+            </div>
+
+            <div id="casesContainer">
+                <!-- Populated dynamically via app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW 5: OFFICIAL FORENSIC REPORTS -->
+        <section class="view-panel" id="view-reports">
+            <div class="view-header no-print">
+                <div>
+                    <h1 class="view-title">Laboratory Evidence Reports</h1>
+                    <p class="view-subtitle">Official Chain-of-Custody Certificates admissible under Federal Rules of Evidence Rule 902</p>
+                </div>
+                <div class="view-header-actions">
+                    <button class="btn btn-secondary" onclick="printCurrentReport()">
+                        <i class="fa-solid fa-print"></i> Print Official Certificate
+                    </button>
+                    <button class="btn btn-primary" onclick="showToast('Official Cryptographic PDF package compiled.', 'success')">
+                        <i class="fa-solid fa-download"></i> Export Signed PDF
+                    </button>
+                </div>
+            </div>
+
+            <div id="officialReportContainer">
+                <!-- Rendered dynamically via app.js -->
+            </div>
+        </section>
+
+        <!-- VIEW 6: ANALYTICS DASHBOARD -->
+        <section class="view-panel" id="view-analytics">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Forensic Analytics & Intelligence</h1>
+                    <p class="view-subtitle">Substance frequency patterns, laboratory turnaround times, and integrity metrics</p>
+                </div>
+            </div>
+
+            <div class="analytics-grid">
+                <!-- Chart 1: Timeline -->
+                <div class="chart-card glass-card flex-2">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-wave-pulse text-accent"></i> Evidence Ingestion & AI Verification Velocity</h3>
+                        <span class="badge-soft">Last 7 Days</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chartTimeline"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 2: Substance Doughnut -->
+                <div class="chart-card glass-card flex-1">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-chart-pie text-accent"></i> Substance Distribution</h3>
+                        <span class="badge-soft">YTD 2024</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chartSubstance"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 3: Outcome Bars -->
+                <div class="chart-card glass-card flex-2">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-bars-progress text-accent"></i> Field Colorimetric Outcomes vs Secondary Lab</h3>
+                        <span class="badge-soft">Quality Control</span>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="chartOutcome"></canvas>
+                    </div>
+                </div>
+
+                <!-- Chart 4: Key Performance Benchmarks -->
+                <div class="chart-card glass-card flex-1">
+                    <div class="chart-header">
+                        <h3><i class="fa-solid fa-gauge text-accent"></i> System Benchmarks</h3>
+                    </div>
+                    <div class="benchmark-list">
+                        <div class="benchmark-item">
+                            <div class="bench-label"><span>Avg. Intake-to-Hash Latency</span> <strong>1.8s</strong></div>
+                            <div class="progress-track"><div class="progress-bar-fill" style="width: 95%;"></div></div>
+                        </div>
+                        <div class="benchmark-item">
+                            <div class="bench-label"><span>Colour Calibration Pass Rate</span> <strong>97.4%</strong></div>
+                            <div class="progress-track"><div class="progress-bar-fill" style="width: 97%;"></div></div>
+                        </div>
+                        <div class="benchmark-item">
+                            <div class="bench-label"><span>Court Admissibility Index</span> <strong>99.9%</strong></div>
+                            <div class="progress-track"><div class="progress-bar-fill" style="width: 99.9%;"></div></div>
+                        </div>
+                        <div class="benchmark-item">
+                            <div class="bench-label"><span>Storage Redundancy Ratio</span> <strong>3x Distributed</strong></div>
+                            <div class="progress-track"><div class="progress-bar-fill" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 7: GEOSPATIAL INTELLIGENCE MAP -->
+        <section class="view-panel" id="view-map">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Geospatial Evidence Intelligence</h1>
+                    <p class="view-subtitle">Interactive tactical map of narcotics seizures, chain-of-custody transfer points, and sector clusters</p>
+                </div>
+            </div>
+
+            <div class="map-card glass-card">
+                <div class="map-header-bar">
+                    <div class="map-legend">
+                        <span class="legend-item"><span class="legend-dot cyan"></span> Positive Seizure</span>
+                        <span class="legend-item"><span class="legend-dot gray"></span> Negative / Inert</span>
+                        <span class="legend-item"><span class="legend-dot red"></span> Tamper Flagged</span>
+                    </div>
+                    <span class="mono-sm text-muted"><i class="fa-solid fa-crosshairs"></i> Carto Dark Tactical Matrix</span>
+                </div>
+                <!-- Leaflet container -->
+                <div id="geoMapContainer" class="geo-map-frame"></div>
+            </div>
+        </section>
+
+        <!-- VIEW 8: ADMIN SUITE & USER ACCESS -->
+        <section class="view-panel" id="view-admin">
+            <div class="view-header">
+                <div>
+                    <h1 class="view-title">Administration & Security Suite</h1>
+                    <p class="view-subtitle">Role-based access control, cryptographic node telemetry, and audit trail ledger</p>
+                </div>
+                <div class="view-header-actions">
+                    <button class="btn btn-primary" onclick="openAddUserModal()">
+                        <i class="fa-solid fa-user-plus"></i> Add Authorized User
+                    </button>
+                </div>
+            </div>
+
+            <div class="admin-sections-grid">
+                <!-- User Permissions Management -->
+                <div class="admin-card glass-card">
+                    <div class="section-card-header">
+                        <h3><i class="fa-solid fa-users-gear text-accent"></i> Authorized Forensic Personnel</h3>
+                        <span class="badge-soft">Role-Based Access (RBAC)</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>User ID</th>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Badge</th>
+                                    <th>Assigned Role</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;">Access Controls</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminUserTableBody">
+                                <!-- Populated dynamically via app.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Immutable Security Audit Trail -->
+                <div class="admin-card glass-card">
+                    <div class="section-card-header">
+                        <h3><i class="fa-solid fa-shield-virus text-accent"></i> Cryptographic Audit Trail</h3>
+                        <span class="crypto-fips-tag"><i class="fa-solid fa-fingerprint"></i> Immutable Ledger</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Log Ref</th>
+                                    <th>Timestamp (UTC)</th>
+                                    <th>Actor</th>
+                                    <th>Security Action Event</th>
+                                    <th>Ledger Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminAuditTableBody">
+                                <!-- Populated dynamically via app.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL 1: CRYPTOGRAPHIC VERIFICATION & TAMPER SIMULATOR -->
+    <div class="modal-backdrop" id="verificationModal">
+        <div class="modal-window glass-card">
+            <div class="modal-header">
+                <h3 id="verifyModalTitle"><i class="fa-solid fa-fingerprint text-accent"></i> Cryptographic Audit</h3>
+                <button class="modal-close-btn" onclick="closeVerificationModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <!-- Integrity Banner -->
+                <div id="verifyStatusBanner" class="verify-banner"></div>
+
+                <!-- Hash Comparison Breakdown -->
+                <div class="hash-audit-card">
+                    <div class="hash-line-group">
+                        <span class="hash-meta-title"><i class="fa-solid fa-lock"></i> Original Registration SHA-256 (At Time of Seizure)</span>
+                        <div class="hash-display-box" id="verifyOriginalHash">...</div>
+                    </div>
+                    <div class="hash-line-group mt-3">
+                        <span class="hash-meta-title"><i class="fa-solid fa-microchip"></i> Current Real-Time Recomputed SHA-256 (Web Crypto Engine)</span>
+                        <div class="hash-display-box" id="verifyCurrentHash">...</div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h4 class="mb-2"><i class="fa-solid fa-clock-rotate-left text-accent"></i> Chain of Custody Proofs</h4>
+                    <div class="custody-timeline" id="verifyAuditChain"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-danger" id="verifyTamperActionBtn">Simulate Tampering</button>
+                <button class="btn btn-secondary" onclick="closeVerificationModal()">Close Inspection</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: 8-STEP AI PIPELINE ANIMATION & VERDICT -->
+    <div class="modal-backdrop" id="pipelineModal">
+        <div class="modal-window glass-card modal-lg">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-atom text-accent"></i> AI Colorimetric & Cryptographic Pipeline</h3>
+                <span class="mono-sm text-accent" id="pipelineProgressPercent">0%</span>
+            </div>
+            <div class="modal-body">
+                <!-- Progress Line -->
+                <div class="pipeline-progress-track">
+                    <div class="pipeline-progress-fill" id="pipelineProgressFill"></div>
+                </div>
+
+                <!-- Pipeline Steps List -->
+                <div class="pipeline-steps-list" id="pipelineStepsContainer">
+                    <!-- Populated dynamically via JS -->
+                </div>
+
+                <!-- Verdict Result Box -->
+                <div class="pipeline-result-card" id="pipelineResultCard" style="display: none;">
+                    <!-- Populated after step 8 completes -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closePipelineModal()">Cancel</button>
+                <button class="btn btn-primary" id="pipelineCommitBtn" style="display: none;">
+                    <i class="fa-solid fa-file-signature"></i> Commit to Immutable Ledger
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL 3: CREATE NEW CASE -->
+    <div class="modal-backdrop" id="createCaseModal">
+        <div class="modal-window glass-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-folder-plus text-accent"></i> Open New Forensic Case Dossier</h3>
+                <button class="modal-close-btn" onclick="closeCreateCaseModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="createCaseForm" onsubmit="handleCreateCaseSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Case Title / Operation Name</label>
+                        <input type="text" id="newCaseTitle" class="form-control" placeholder="e.g., Operation Nightfall" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Lead Investigator & Badge</label>
+                        <input type="text" id="newCaseLead" class="form-control" value="Alex Mercer (INV-7842)" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Operational Summary</label>
+                        <textarea id="newCaseSummary" class="form-control" rows="3" placeholder="Brief summary of the incident or narcotics investigation..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateCaseModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-check"></i> Initialize Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 4: ADD AUTHORIZED USER -->
+    <div class="modal-backdrop" id="addUserModal">
+        <div class="modal-window glass-card">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-user-shield text-accent"></i> Grant Forensic Credentials</h3>
+                <button class="modal-close-btn" onclick="closeAddUserModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="addUserForm" onsubmit="handleAddUserSubmit(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Officer / Specialist Name</label>
+                        <input type="text" id="newUserName" class="form-control" placeholder="e.g. Det. Marcus Brody" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Official Department Email</label>
+                        <input type="email" id="newUserEmail" class="form-control" placeholder="e.g. m.brody@forensics.narc.gov" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label class="form-label">Badge / Credential ID</label>
+                            <input type="text" id="newUserBadge" class="form-control" placeholder="e.g. INV-9104" required>
+                        </div>
+                        <div class="form-group flex-1">
+                            <label class="form-label">Assigned Role</label>
+                            <select id="newUserRole" class="form-control">
+                                <option value="Forensic Investigator">Forensic Investigator</option>
+                                <option value="Senior Lab Technician">Senior Lab Technician</option>
+                                <option value="Super Administrator">Super Administrator</option>
+                                <option value="Courtroom Observer / DA">Courtroom Observer / DA</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-user-check"></i> Authorize Credential</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- External Libraries -->
+    <!-- Leaflet JS for Geospatial Intelligence -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Chart.js for Forensic Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- NarcoLocker Application Core Script -->
+    <script src="js/app.js"></script>
+</body>
+</html>
